@@ -1,0 +1,18 @@
+{
+  "objective": "Browser large-object resumable concurrent download from MinIO",
+  "domains": ["object-storage", "file-transfer"],
+  "operations": ["download"],
+  "topologies": ["browser-to-object-storage"],
+  "problems": ["large-file-transfer", "resume-after-interruption"],
+  "required_mechanisms": ["http-range", "etag-if-range", "checkpoint", "chunk-scheduler"],
+  "optional_mechanisms": ["presigned-url", "integrity-check"],
+  "runtimes": ["browser", "jvm-backend", "kubernetes"],
+  "languages": ["typescript", "java"],
+  "roles": ["direct-dependency", "official-sdk", "mechanism-reference", "production-validation"],
+  "constraints": {
+    "licenses_preferred": ["Apache-2.0"],
+    "licenses_forbidden": [],
+    "data_must_bypass_application_server": true
+  },
+  "exclude": ["upload-only", "server-proxy-only"]
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "catalog_version": "0.1.0-dev",
+  "generated_at": "2026-07-29T08:58:48Z",
+  "projects": {
+    "total": 98,
+    "tier_a": 0,
+    "tier_b": 58,
+    "tier_c": 40
+  },
+  "patterns": 34,
+  "github_metrics": {
+    "fresh": 58,
+    "pending_or_missing": 40,
+    "freshness_days": 30
+  },
+  "notes": [
+    "All Tier B records have original structured classifications and fresh GitHub API snapshots.",
+    "Tier C records are discovery-only and require verification before primary recommendation.",
+    "No repository is represented as Tier A until code and test evidence is pinned to a commit."
+  ]
+}

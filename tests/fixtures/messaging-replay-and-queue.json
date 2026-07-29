@@ -1,0 +1,12 @@
+{
+  "objective": "Java Kubernetes order events, task queues, and event replay",
+  "domains": ["messaging", "event-streaming"],
+  "operations": ["publish", "consume", "replay"],
+  "problems": ["event-streaming", "durable-replay", "message-delivery", "work-queue"],
+  "required_mechanisms": ["partitioned-log", "consumer-offset", "acknowledgement", "redelivery"],
+  "optional_mechanisms": ["dead-letter-queue", "replication"],
+  "runtimes": ["jvm", "kubernetes"],
+  "languages": ["java"],
+  "roles": ["official-implementation", "production-validation"],
+  "constraints": {"self_hosted": true}
+}

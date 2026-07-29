@@ -1,0 +1,11 @@
+{
+  "objective": "Self-hosted Kubernetes metrics logs and traces platform for 300 services",
+  "domains": ["observability"],
+  "operations": ["collect", "store", "query", "alert"],
+  "problems": ["infrastructure-monitoring", "centralized-logging", "distributed-tracing"],
+  "required_mechanisms": ["metrics-monitoring", "logs-pipeline", "distributed-tracing", "otlp"],
+  "optional_mechanisms": ["remote-write", "sampling", "backpressure"],
+  "runtimes": ["kubernetes"],
+  "roles": ["official-implementation", "integration-adapter", "production-validation"],
+  "constraints": {"self_hosted": true}
+}
