@@ -42,7 +42,7 @@ Compute maturity independently:
 | Catalog curation and pinned evidence tier | 15 |
 | Pattern validated by independent repositories | 20 |
 
-Normalize Stars with `log10(stars + 1)` and percentile-rank only among repositories sharing an exact `(solution pattern, evaluated role)` pair. If that group is too small, fall back to a cohort or primary domain while preserving the evaluated role family. Do not compare an official SDK globally with a general-purpose platform.
+Normalize Stars with `log10(stars + 1)` and percentile-rank only among repositories sharing an exact `(solution pattern, evaluated role)` pair. Require at least 10 peers; otherwise fall back to a cohort or primary domain while preserving the evaluated role family. If every peer group remains below 10, leave the Star component unscored and report the insufficient peer count. Do not compare an official SDK globally with a general-purpose platform.
 
 Leave missing maturity components unscored instead of renormalizing the remaining evidence into an inflated score, and reduce confidence. A project with no GitHub snapshot still receives partial credit for curation and pattern evidence rather than a forced zero. An archived project may still be a strong historical implementation reference but not a default dependency.
 
@@ -56,7 +56,7 @@ Track confidence separately:
 - `medium`: curated metadata and multiple consistent sources, without current code review;
 - `low`: discovery metadata, stale facts, or README-only claims.
 
-Tier A starts high only for the capabilities actually reviewed. Tier B normally starts medium. Tier C starts low.
+Tier A starts high only when a valid review record pins the relevant implementation or tests to a 40-character Commit SHA. A label alone never grants high confidence. Tier B normally starts medium. Tier C starts low.
 
 ## 5. Review priority
 
@@ -66,7 +66,7 @@ After compatibility gates, calculate:
 review_priority = sqrt(relevance * maturity) * confidence_factor
 ```
 
-Use confidence factors of `1.00`, `0.90`, and `0.75` for high, medium, and low. Require relevance of at least 60 for the default shortlist. The CLI retains candidates from 25 through 59 only as explicitly marked coverage-gap or comparison candidates; do not make them the primary recommendation without new evidence.
+Use confidence factors of `1.00`, `0.90`, and `0.75` for high, medium, and low. Require relevance of at least 60 and Tier A or B evidence for the default shortlist. Tier C candidates are returned separately for discovery and may fill a stated coverage gap only after live verification. The CLI retains candidates from 25 through 59 only as explicitly marked coverage-gap or comparison candidates; do not make them the primary recommendation without new evidence.
 
 Select role-diverse evidence:
 

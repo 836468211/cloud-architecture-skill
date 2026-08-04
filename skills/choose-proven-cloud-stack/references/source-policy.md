@@ -27,6 +27,8 @@ Do not imply that Tier B code has been deeply reviewed.
 
 Allow GitHub API and trusted landscape ingestion with minimal classification. Require live verification before making a primary recommendation.
 
+Automated GitHub topic matches are hypotheses, not verified capability claims. Preserve their query provenance, exclude forks, mirrors, templates, archived or disabled repositories, and obvious lists or tutorials, then place them only in the discovery shortlist. Never promote an automatically generated record to Tier B or A.
+
 ## Evidence order
 
 Prefer:
@@ -53,6 +55,8 @@ README claims alone are discovery evidence, not proof of performance or correctn
 Include projects because they implement or validate a solution pattern, not merely because they are popular. Deduplicate forks, mirrors, renamed repositories, and monorepo subprojects.
 
 Use the GitHub node ID as the repository identity anchor. Reject a refresh when the node ID changes. When the same node moves to a new slug, update the curated project URL and ID deliberately before accepting refreshed facts; never let a redirect silently transfer capability labels to a different repository.
+
+For large discovery snapshots, select within each solution-pattern cohort before filling by global popularity, and cap repeated owners inside a cohort. This prevents broad topics and generated repository families from displacing specialized projects. Record the exact query, snapshot timestamp, returned rank, and selection rule in the discovery manifest.
 
 Flag rather than silently delete historically important archived projects. Exclude malware, obvious spam, repositories without a meaningful implementation, and entries whose identity cannot be verified.
 

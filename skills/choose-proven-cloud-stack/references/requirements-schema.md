@@ -53,3 +53,4 @@ Represent the user's request with this compact JSON shape. Omit unknown optional
 4. Treat language as a hard gate only for direct dependencies.
 5. Ask one question only when topology, data ownership, or runtime ambiguity would select a different pattern.
 6. Split a composed architecture into one fingerprint per capability family, run them independently, and combine their shortlists. Examples include event-log versus work-queue versus outbox/CDC, and metrics versus logs versus traces.
+7. Treat `scale`, preference-style `weights`, and non-gating constraints as ADR context. The catalog CLI returns them in `unscored_requirement_fields`; apply them explicitly when comparing implementation complexity, benchmarks, and operations rather than assuming they changed repository scores.

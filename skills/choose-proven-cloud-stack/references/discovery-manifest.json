@@ -1,0 +1,610 @@
+{
+  "cache_complete": true,
+  "candidates": {
+    "eligible": 3356,
+    "excluded": 275,
+    "exclusion_reasons": {
+      "list-or-tutorial": 60,
+      "missing-language": 186,
+      "too-small": 29
+    },
+    "merged": 3631
+  },
+  "queries": {
+    "cached": 68,
+    "items": 4202,
+    "planned": 68
+  },
+  "query_provenance": [
+    {
+      "fetched_at": "2026-08-03T10:02:35Z",
+      "items": 25,
+      "pattern_id": "ml-experiment-lifecycle",
+      "profile_id": "ml-lifecycle",
+      "query_id": "014803a5d39f97b4",
+      "topic": "experiment-tracking"
+    },
+    {
+      "fetched_at": "2026-08-03T09:30:10Z",
+      "items": 75,
+      "pattern_id": "dynamic-secrets-management",
+      "profile_id": "secrets-management",
+      "query_id": "05de22b2871c2f8e",
+      "topic": "secret-management"
+    },
+    {
+      "fetched_at": "2026-08-03T10:02:13Z",
+      "items": 75,
+      "pattern_id": "log-based-change-data-capture",
+      "profile_id": "change-data-capture",
+      "query_id": "06e4a224d3dd9bd0",
+      "topic": "data-integration"
+    },
+    {
+      "fetched_at": "2026-08-03T09:32:16Z",
+      "items": 75,
+      "pattern_id": "kubernetes-serverless-runtime",
+      "profile_id": "serverless-runtime",
+      "query_id": "090a5fc1f7b3f7d0",
+      "topic": "serverless"
+    },
+    {
+      "fetched_at": "2026-08-03T09:25:17Z",
+      "items": 75,
+      "pattern_id": "distributed-batch-stream-compute",
+      "profile_id": "distributed-compute",
+      "query_id": "0d76cd5a354f3c18",
+      "topic": "distributed-computing"
+    },
+    {
+      "fetched_at": "2026-08-03T09:30:49Z",
+      "items": 75,
+      "pattern_id": "event-driven-kubernetes-autoscaling",
+      "profile_id": "event-autoscaling",
+      "query_id": "0f8b794744066a39",
+      "topic": "autoscaling"
+    },
+    {
+      "fetched_at": "2026-08-03T09:29:48Z",
+      "items": 72,
+      "pattern_id": "durable-execution-workflow",
+      "profile_id": "durable-workflow",
+      "query_id": "0fcf24e1d90d865c",
+      "topic": "durable-execution"
+    },
+    {
+      "fetched_at": "2026-08-03T10:10:32Z",
+      "items": 75,
+      "pattern_id": "s3-compatible-object-storage",
+      "profile_id": "s3-object-storage",
+      "query_id": "124dd22c6fed2134",
+      "topic": "object-storage"
+    },
+    {
+      "fetched_at": "2026-08-03T10:09:17Z",
+      "items": 75,
+      "pattern_id": "policy-as-code-admission",
+      "profile_id": "policy-admission",
+      "query_id": "139f8c932b8d1452",
+      "topic": "policy-as-code"
+    },
+    {
+      "fetched_at": "2026-08-03T09:32:23Z",
+      "items": 57,
+      "pattern_id": "lakehouse-table-format",
+      "profile_id": "lakehouse-format",
+      "query_id": "19c5220366cb697c",
+      "topic": "data-lake"
+    },
+    {
+      "fetched_at": "2026-08-03T09:26:00Z",
+      "items": 75,
+      "pattern_id": "distributed-search-engine",
+      "profile_id": "distributed-search",
+      "query_id": "1b3067a6e295d6fb",
+      "topic": "search-engine"
+    },
+    {
+      "fetched_at": "2026-08-03T10:03:15Z",
+      "items": 75,
+      "pattern_id": "oidc-identity-provider",
+      "profile_id": "oidc-identity",
+      "query_id": "1f94b71f5df84536",
+      "topic": "openid-connect"
+    },
+    {
+      "fetched_at": "2026-08-03T09:23:53Z",
+      "items": 75,
+      "pattern_id": "dag-workflow-scheduling",
+      "profile_id": "dag-orchestration",
+      "query_id": "24fd6b5471afe90e",
+      "topic": "data-pipeline"
+    },
+    {
+      "fetched_at": "2026-08-03T09:29:32Z",
+      "items": 75,
+      "pattern_id": "distributed-sql-replication",
+      "profile_id": "distributed-sql",
+      "query_id": "29935f630f93b408",
+      "topic": "distributed-database"
+    },
+    {
+      "fetched_at": "2026-08-03T10:08:56Z",
+      "items": 75,
+      "pattern_id": "otel-telemetry-pipeline",
+      "profile_id": "telemetry-pipeline",
+      "query_id": "2e71e509d6584f05",
+      "topic": "distributed-tracing"
+    },
+    {
+      "fetched_at": "2026-08-03T09:31:29Z",
+      "items": 43,
+      "pattern_id": "extensible-api-gateway",
+      "profile_id": "api-gateway",
+      "query_id": "3467f593a09b847e",
+      "topic": "ingress-controller"
+    },
+    {
+      "fetched_at": "2026-08-03T10:09:32Z",
+      "items": 75,
+      "pattern_id": "pull-based-gitops",
+      "profile_id": "gitops-delivery",
+      "query_id": "3b7e854fd28581ca",
+      "topic": "gitops"
+    },
+    {
+      "fetched_at": "2026-08-03T09:25:25Z",
+      "items": 75,
+      "pattern_id": "distributed-batch-stream-compute",
+      "profile_id": "distributed-compute",
+      "query_id": "464e74ba91740511",
+      "topic": "stream-processing"
+    },
+    {
+      "fetched_at": "2026-08-03T10:10:50Z",
+      "items": 75,
+      "pattern_id": "sidecar-service-mesh",
+      "profile_id": "service-mesh",
+      "query_id": "46dd51aa24b2a5ef",
+      "topic": "envoy"
+    },
+    {
+      "fetched_at": "2026-08-03T09:23:15Z",
+      "items": 75,
+      "pattern_id": "cloud-native-security-scanning",
+      "profile_id": "security-scanning",
+      "query_id": "49a81ddbd97a6fb5",
+      "topic": "vulnerability-scanner"
+    },
+    {
+      "fetched_at": "2026-08-03T10:09:53Z",
+      "items": 45,
+      "pattern_id": "replicated-event-log",
+      "profile_id": "event-log",
+      "query_id": "4c3e5ac8ef6fb074",
+      "topic": "event-streaming"
+    },
+    {
+      "fetched_at": "2026-08-03T09:23:07Z",
+      "items": 44,
+      "pattern_id": "cloud-native-security-scanning",
+      "profile_id": "security-scanning",
+      "query_id": "4d3ceac3b4722e40",
+      "topic": "container-security"
+    },
+    {
+      "fetched_at": "2026-08-03T09:23:46Z",
+      "items": 75,
+      "pattern_id": "content-addressed-backup",
+      "profile_id": "content-addressed-backup",
+      "query_id": "50c13d536eb7b4a3",
+      "topic": "deduplication"
+    },
+    {
+      "fetched_at": "2026-08-03T09:30:55Z",
+      "items": 0,
+      "pattern_id": "event-driven-kubernetes-autoscaling",
+      "profile_id": "event-autoscaling",
+      "query_id": "5d508de39d35beb1",
+      "topic": "kubernetes-autoscaling"
+    },
+    {
+      "fetched_at": "2026-08-03T10:10:40Z",
+      "items": 75,
+      "pattern_id": "s3-compatible-object-storage",
+      "profile_id": "s3-object-storage",
+      "query_id": "5d7106bb54f36846",
+      "topic": "s3"
+    },
+    {
+      "fetched_at": "2026-08-03T10:09:25Z",
+      "items": 75,
+      "pattern_id": "pull-based-gitops",
+      "profile_id": "gitops-delivery",
+      "query_id": "5fcaf332475110ef",
+      "topic": "continuous-delivery"
+    },
+    {
+      "fetched_at": "2026-08-03T09:24:54Z",
+      "items": 75,
+      "pattern_id": "declarative-infrastructure-as-code",
+      "profile_id": "infrastructure-as-code",
+      "query_id": "636da2f21394562d",
+      "topic": "terraform"
+    },
+    {
+      "fetched_at": "2026-08-03T09:29:59Z",
+      "items": 75,
+      "pattern_id": "durable-execution-workflow",
+      "profile_id": "durable-workflow",
+      "query_id": "64c9e58c83be1671",
+      "topic": "workflow-engine"
+    },
+    {
+      "fetched_at": "2026-08-03T09:25:09Z",
+      "items": 75,
+      "pattern_id": "direct-object-storage-segmented-download",
+      "profile_id": "segmented-download",
+      "query_id": "6d10118a1421afa8",
+      "topic": "downloader"
+    },
+    {
+      "fetched_at": "2026-08-03T10:10:23Z",
+      "items": 28,
+      "pattern_id": "resumable-upload-protocol",
+      "profile_id": "resumable-upload",
+      "query_id": "6fbdc578d53ba135",
+      "topic": "tus"
+    },
+    {
+      "fetched_at": "2026-08-03T09:23:00Z",
+      "items": 36,
+      "pattern_id": "central-log-pipeline",
+      "profile_id": "central-logging",
+      "query_id": "7205d0a74f5a95c1",
+      "topic": "log-management"
+    },
+    {
+      "fetched_at": "2026-08-03T09:30:31Z",
+      "items": 56,
+      "pattern_id": "ebpf-cloud-networking",
+      "profile_id": "ebpf-networking",
+      "query_id": "7c36bcea5fc1af3d",
+      "topic": "cni"
+    },
+    {
+      "fetched_at": "2026-08-03T09:25:02Z",
+      "items": 75,
+      "pattern_id": "direct-object-storage-segmented-download",
+      "profile_id": "segmented-download",
+      "query_id": "8184688d65704113",
+      "topic": "download-manager"
+    },
+    {
+      "fetched_at": "2026-08-03T09:25:40Z",
+      "items": 75,
+      "pattern_id": "distributed-in-memory-cache",
+      "profile_id": "distributed-cache",
+      "query_id": "8332a4749be7243e",
+      "topic": "key-value-store"
+    },
+    {
+      "fetched_at": "2026-08-03T09:32:08Z",
+      "items": 75,
+      "pattern_id": "kubernetes-serverless-runtime",
+      "profile_id": "serverless-runtime",
+      "query_id": "868ef231771d2ade",
+      "topic": "faas"
+    },
+    {
+      "fetched_at": "2026-08-03T10:10:16Z",
+      "items": 16,
+      "pattern_id": "resumable-upload-protocol",
+      "profile_id": "resumable-upload",
+      "query_id": "8b68522a75027d3c",
+      "topic": "resumable-upload"
+    },
+    {
+      "fetched_at": "2026-08-03T09:32:00Z",
+      "items": 75,
+      "pattern_id": "kubernetes-control-loop",
+      "profile_id": "kubernetes-controller",
+      "query_id": "8cebda5c6afc01c7",
+      "topic": "kubernetes-operator"
+    },
+    {
+      "fetched_at": "2026-08-03T09:31:44Z",
+      "items": 75,
+      "pattern_id": "internal-developer-platform",
+      "profile_id": "developer-platform",
+      "query_id": "9374a441e96f91d5",
+      "topic": "platform-engineering"
+    },
+    {
+      "fetched_at": "2026-08-03T10:02:29Z",
+      "items": 75,
+      "pattern_id": "low-latency-message-broker",
+      "profile_id": "message-broker",
+      "query_id": "99631d7e07af6615",
+      "topic": "message-queue"
+    },
+    {
+      "fetched_at": "2026-08-03T09:23:22Z",
+      "items": 5,
+      "pattern_id": "columnar-analytical-database",
+      "profile_id": "columnar-analytics",
+      "query_id": "9ec4d3e44a2da9c8",
+      "topic": "columnar-database"
+    },
+    {
+      "fetched_at": "2026-08-03T10:09:10Z",
+      "items": 0,
+      "pattern_id": "policy-as-code-admission",
+      "profile_id": "policy-admission",
+      "query_id": "a0af4c6adee87e1b",
+      "topic": "kubernetes-admission"
+    },
+    {
+      "fetched_at": "2026-08-03T09:30:22Z",
+      "items": 75,
+      "pattern_id": "dynamic-secrets-management",
+      "profile_id": "secrets-management",
+      "query_id": "a2043fa46c97e3c7",
+      "topic": "secrets-management"
+    },
+    {
+      "fetched_at": "2026-08-03T10:09:39Z",
+      "items": 75,
+      "pattern_id": "pull-metrics-monitoring",
+      "profile_id": "metrics-monitoring",
+      "query_id": "a2b32ec8f21cdea2",
+      "topic": "monitoring"
+    },
+    {
+      "fetched_at": "2026-08-03T10:02:58Z",
+      "items": 75,
+      "pattern_id": "model-serving-platform",
+      "profile_id": "model-serving",
+      "query_id": "a6024db9d0e9d0d9",
+      "topic": "model-serving"
+    },
+    {
+      "fetched_at": "2026-08-03T10:10:01Z",
+      "items": 75,
+      "pattern_id": "replicated-event-log",
+      "profile_id": "event-log",
+      "query_id": "a82c37ebc5428f51",
+      "topic": "kafka"
+    },
+    {
+      "fetched_at": "2026-08-03T10:09:46Z",
+      "items": 75,
+      "pattern_id": "pull-metrics-monitoring",
+      "profile_id": "metrics-monitoring",
+      "query_id": "ada1ee1f7d092faf",
+      "topic": "prometheus"
+    },
+    {
+      "fetched_at": "2026-08-03T10:11:06Z",
+      "items": 75,
+      "pattern_id": "vector-similarity-service",
+      "profile_id": "vector-search",
+      "query_id": "b0b02293085c615d",
+      "topic": "vector-database"
+    },
+    {
+      "fetched_at": "2026-08-03T10:11:13Z",
+      "items": 75,
+      "pattern_id": "vector-similarity-service",
+      "profile_id": "vector-search",
+      "query_id": "b5d22c36a45c6d76",
+      "topic": "vector-search"
+    },
+    {
+      "fetched_at": "2026-08-03T09:23:30Z",
+      "items": 75,
+      "pattern_id": "columnar-analytical-database",
+      "profile_id": "columnar-analytics",
+      "query_id": "b6848aa31b9fefc5",
+      "topic": "olap"
+    },
+    {
+      "fetched_at": "2026-08-03T10:03:06Z",
+      "items": 75,
+      "pattern_id": "oidc-identity-provider",
+      "profile_id": "oidc-identity",
+      "query_id": "bb7f9708ce606f36",
+      "topic": "oauth2"
+    },
+    {
+      "fetched_at": "2026-08-03T09:31:52Z",
+      "items": 75,
+      "pattern_id": "kubernetes-control-loop",
+      "profile_id": "kubernetes-controller",
+      "query_id": "bc21aeada60d15e6",
+      "topic": "kubernetes-controller"
+    },
+    {
+      "fetched_at": "2026-08-03T10:02:43Z",
+      "items": 75,
+      "pattern_id": "ml-experiment-lifecycle",
+      "profile_id": "ml-lifecycle",
+      "query_id": "c1aca7c9b6836567",
+      "topic": "mlops"
+    },
+    {
+      "fetched_at": "2026-08-03T09:24:46Z",
+      "items": 75,
+      "pattern_id": "declarative-infrastructure-as-code",
+      "profile_id": "infrastructure-as-code",
+      "query_id": "c6063a7559016b5b",
+      "topic": "infrastructure-as-code"
+    },
+    {
+      "fetched_at": "2026-08-03T09:31:35Z",
+      "items": 22,
+      "pattern_id": "internal-developer-platform",
+      "profile_id": "developer-platform",
+      "query_id": "cdae3fbab6308831",
+      "topic": "developer-portal"
+    },
+    {
+      "fetched_at": "2026-08-03T10:10:58Z",
+      "items": 75,
+      "pattern_id": "sidecar-service-mesh",
+      "profile_id": "service-mesh",
+      "query_id": "d256dfb3650ae869",
+      "topic": "service-mesh"
+    },
+    {
+      "fetched_at": "2026-08-03T09:30:39Z",
+      "items": 75,
+      "pattern_id": "ebpf-cloud-networking",
+      "profile_id": "ebpf-networking",
+      "query_id": "d2720b6d8b3e08ee",
+      "topic": "ebpf"
+    },
+    {
+      "fetched_at": "2026-08-03T09:31:21Z",
+      "items": 75,
+      "pattern_id": "extensible-api-gateway",
+      "profile_id": "api-gateway",
+      "query_id": "d5a3f3804bb82311",
+      "topic": "api-gateway"
+    },
+    {
+      "fetched_at": "2026-08-03T09:22:52Z",
+      "items": 3,
+      "pattern_id": "central-log-pipeline",
+      "profile_id": "central-logging",
+      "query_id": "d6b728ca79a946e8",
+      "topic": "log-aggregation"
+    },
+    {
+      "fetched_at": "2026-08-03T09:29:37Z",
+      "items": 3,
+      "pattern_id": "distributed-sql-replication",
+      "profile_id": "distributed-sql",
+      "query_id": "dacc1e89f45ea785",
+      "topic": "distributed-sql"
+    },
+    {
+      "fetched_at": "2026-08-03T09:25:32Z",
+      "items": 19,
+      "pattern_id": "distributed-in-memory-cache",
+      "profile_id": "distributed-cache",
+      "query_id": "e3e7d5ba2492f8e3",
+      "topic": "distributed-cache"
+    },
+    {
+      "fetched_at": "2026-08-03T09:32:31Z",
+      "items": 66,
+      "pattern_id": "lakehouse-table-format",
+      "profile_id": "lakehouse-format",
+      "query_id": "e40acaa975679fe1",
+      "topic": "lakehouse"
+    },
+    {
+      "fetched_at": "2026-08-03T10:02:20Z",
+      "items": 73,
+      "pattern_id": "low-latency-message-broker",
+      "profile_id": "message-broker",
+      "query_id": "e74132c3b0461ff4",
+      "topic": "message-broker"
+    },
+    {
+      "fetched_at": "2026-08-03T10:02:05Z",
+      "items": 64,
+      "pattern_id": "log-based-change-data-capture",
+      "profile_id": "change-data-capture",
+      "query_id": "e9aef61fccbd3100",
+      "topic": "change-data-capture"
+    },
+    {
+      "fetched_at": "2026-08-03T09:24:00Z",
+      "items": 48,
+      "pattern_id": "dag-workflow-scheduling",
+      "profile_id": "dag-orchestration",
+      "query_id": "f50beb9841ccf258",
+      "topic": "workflow-orchestration"
+    },
+    {
+      "fetched_at": "2026-08-03T09:23:38Z",
+      "items": 75,
+      "pattern_id": "content-addressed-backup",
+      "profile_id": "content-addressed-backup",
+      "query_id": "f725ead5a55682db",
+      "topic": "backup"
+    },
+    {
+      "fetched_at": "2026-08-03T10:09:04Z",
+      "items": 75,
+      "pattern_id": "otel-telemetry-pipeline",
+      "profile_id": "telemetry-pipeline",
+      "query_id": "f88b193f0168e05e",
+      "topic": "opentelemetry"
+    },
+    {
+      "fetched_at": "2026-08-03T10:02:50Z",
+      "items": 27,
+      "pattern_id": "model-serving-platform",
+      "profile_id": "model-serving",
+      "query_id": "f8d76ef44b8cb712",
+      "topic": "inference-server"
+    },
+    {
+      "fetched_at": "2026-08-03T09:25:51Z",
+      "items": 75,
+      "pattern_id": "distributed-search-engine",
+      "profile_id": "distributed-search",
+      "query_id": "fe3e2042ba8caac7",
+      "topic": "full-text-search"
+    }
+  ],
+  "schema_version": "1.0",
+  "selection": {
+    "by_pattern": {
+      "central-log-pipeline": 26,
+      "cloud-native-security-scanning": 26,
+      "columnar-analytical-database": 27,
+      "content-addressed-backup": 27,
+      "dag-workflow-scheduling": 27,
+      "declarative-infrastructure-as-code": 27,
+      "direct-object-storage-segmented-download": 27,
+      "distributed-batch-stream-compute": 26,
+      "distributed-in-memory-cache": 27,
+      "distributed-search-engine": 27,
+      "distributed-sql-replication": 27,
+      "durable-execution-workflow": 27,
+      "dynamic-secrets-management": 26,
+      "ebpf-cloud-networking": 26,
+      "event-driven-kubernetes-autoscaling": 26,
+      "extensible-api-gateway": 27,
+      "internal-developer-platform": 26,
+      "kubernetes-control-loop": 27,
+      "kubernetes-serverless-runtime": 26,
+      "lakehouse-table-format": 26,
+      "log-based-change-data-capture": 26,
+      "low-latency-message-broker": 27,
+      "ml-experiment-lifecycle": 26,
+      "model-serving-platform": 26,
+      "oidc-identity-provider": 26,
+      "otel-telemetry-pipeline": 26,
+      "policy-as-code-admission": 26,
+      "pull-based-gitops": 27,
+      "pull-metrics-monitoring": 26,
+      "replicated-event-log": 27,
+      "resumable-upload-protocol": 27,
+      "s3-compatible-object-storage": 27,
+      "sidecar-service-mesh": 27,
+      "vector-similarity-service": 27
+    },
+    "expanded": 902,
+    "owner_cap": 20,
+    "static": 98,
+    "static_metrics_completed_from_search": 23,
+    "strategy": "pattern-round-robin",
+    "target_total": 1000
+  },
+  "snapshot_date": "2026-08-03"
+}

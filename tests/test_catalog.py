@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -74,7 +75,8 @@ class CatalogTests(unittest.TestCase):
         self.assertIn("github:aria2/aria2", mechanism_ids)
         rows = {row["repo_id"]: row for row in result["results"]}
         self.assertTrue(rows["github:aria2/aria2"]["default_eligible"])
-        self.assertFalse(rows["github:aws/aws-sdk-js-v3"]["default_eligible"])
+        direct_rows = {row["repo_id"]: row for row in result["role_shortlists"]["direct"]}
+        self.assertFalse(direct_rows["github:aws/aws-sdk-js-v3"]["default_eligible"])
 
     def test_minio_java_is_ranked_for_its_backend_control_plane_role(self):
         requirements = {
@@ -91,8 +93,27 @@ class CatalogTests(unittest.TestCase):
         result = catalog.recommend(requirements, limit=10)
         rows = {row["repo_id"]: row for row in result["results"]}
         self.assertIn("github:minio/minio-java", rows)
-        self.assertTrue(rows["github:minio/minio-java"]["default_eligible"])
+        self.assertTrue(rows["github:minio/minio-java"]["relevance_eligible"])
+        self.assertFalse(rows["github:minio/minio-java"]["default_eligible"])
+        self.assertIn(
+            "github:minio/minio-java",
+            result["selection_policy"]["discovery_shortlist_ids"],
+        )
         self.assertLess(rows["github:minio/minio-java"]["maturity"], 40.0)
+
+    def test_requested_role_requires_an_exact_role_match(self):
+        requirements = {
+            "objective": "Java object storage server implementation",
+            "domains": ["object-storage"],
+            "operations": ["download"],
+            "required_mechanisms": ["s3-api"],
+            "roles": ["official-implementation"],
+        }
+        result = catalog.recommend(requirements, limit=20)
+        self.assertNotIn(
+            "github:minio/minio-java",
+            {row["repo_id"] for row in result["results"]},
+        )
 
     def test_ranking_is_deterministic(self):
         requirements = json.loads((FIXTURE_DIR / "minio-browser-download.json").read_text(encoding="utf-8"))
@@ -271,6 +292,28 @@ class CatalogTests(unittest.TestCase):
         self.assertFalse(compatible)
         self.assertIn("topology-conflict-for-direct-use", reasons)
 
+    def test_official_server_implementation_is_not_language_gated_like_an_sdk(self):
+        project = {
+            "operations": ["serve"],
+            "runtimes": ["server"],
+            "languages": ["go"],
+            "pattern_links": [{"pattern_id": "p1", "roles": ["official-implementation"]}],
+        }
+        req = {
+            "domains": set(), "operations": {"serve"}, "problems": set(),
+            "mechanisms": set(), "optional_mechanisms": set(), "topologies": set(),
+            "runtimes": {"jvm"}, "languages": {"java"},
+            "roles": {"official-implementation"}, "exclude": set(),
+        }
+        compatible, reasons = catalog.role_compatibility(
+            project,
+            {},
+            req,
+            "direct",
+            {"official-implementation"},
+        )
+        self.assertTrue(compatible, reasons)
+
     def test_required_mechanism_cap_applies_to_role_scores(self):
         project = {
             "mechanisms": ["http-range"],
@@ -290,6 +333,47 @@ class CatalogTests(unittest.TestCase):
             catalog.recommend({"roles": "direct-dependency"}, limit=3)
         with self.assertRaisesRegex(ValueError, "constraints"):
             catalog.recommend({"constraints": None}, limit=3)
+
+    def test_unscored_context_is_reported_instead_of_silently_ignored(self):
+        result = catalog.recommend(
+            {
+                "domains": ["object-storage"],
+                "scale": {"concurrent_users": 500},
+                "weights": {"performance": 0.5},
+                "constraints": {
+                    "licenses_forbidden": [],
+                    "licenses_preferred": ["Apache-2.0"],
+                    "self_hosted": True,
+                },
+            },
+            limit=3,
+        )
+        self.assertEqual(
+            result["unscored_requirement_fields"],
+            ["constraints.licenses_preferred", "constraints.self_hosted", "scale", "weights"],
+        )
+
+    def test_tier_a_without_a_pinned_review_is_not_high_confidence(self):
+        project = {
+            "repo_id": "github:owner/repo",
+            "primary_domain": "storage",
+            "cohort_id": "storage",
+            "curation": {"tier": "A"},
+            "pattern_links": [{"pattern_id": "p1", "roles": ["reference-implementation"]}],
+        }
+        fetched_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        metric = {"stars": 100, "forks": 10, "pushed_at": fetched_at, "fetched_at": fetched_at, "status": "ok"}
+        _, confidence, _, breakdown = catalog.maturity_score(
+            project,
+            metric,
+            [project],
+            {project["repo_id"]: metric},
+            {"p1": {"validated_by": [project["repo_id"]]}},
+            {"reference-implementation"},
+            reviews=[],
+        )
+        self.assertEqual(confidence, "medium")
+        self.assertEqual(breakdown["pinned_reviews"], 0.0)
 
 
 if __name__ == "__main__":

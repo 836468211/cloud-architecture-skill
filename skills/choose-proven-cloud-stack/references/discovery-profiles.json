@@ -1,0 +1,282 @@
+{
+  "schema_version": "1.0",
+  "defaults": {
+    "min_stars": 20,
+    "per_page": 75,
+    "roles": ["mechanism-reference"]
+  },
+  "profiles": [
+    {
+      "profile_id": "s3-object-storage",
+      "pattern_id": "s3-compatible-object-storage",
+      "topics": ["object-storage", "s3"],
+      "cohort_id": "s3-object-storage-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["s3-api", "http"]
+    },
+    {
+      "profile_id": "segmented-download",
+      "pattern_id": "direct-object-storage-segmented-download",
+      "topics": ["download-manager", "downloader"],
+      "cohort_id": "segmented-download-discovery",
+      "runtimes": ["native-client", "browser"],
+      "protocols": ["http", "https"]
+    },
+    {
+      "profile_id": "resumable-upload",
+      "pattern_id": "resumable-upload-protocol",
+      "topics": ["resumable-upload", "tus"],
+      "cohort_id": "resumable-upload-discovery",
+      "runtimes": ["server", "browser"],
+      "protocols": ["tus", "http"]
+    },
+    {
+      "profile_id": "content-addressed-backup",
+      "pattern_id": "content-addressed-backup",
+      "topics": ["backup", "deduplication"],
+      "cohort_id": "backup-engine-discovery",
+      "runtimes": ["native-client", "server"],
+      "protocols": ["http", "s3-api"]
+    },
+    {
+      "profile_id": "distributed-sql",
+      "pattern_id": "distributed-sql-replication",
+      "topics": ["distributed-database", "distributed-sql"],
+      "cohort_id": "distributed-sql-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["sql", "grpc"]
+    },
+    {
+      "profile_id": "columnar-analytics",
+      "pattern_id": "columnar-analytical-database",
+      "topics": ["olap", "columnar-database"],
+      "cohort_id": "columnar-olap-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["sql", "http"]
+    },
+    {
+      "profile_id": "distributed-cache",
+      "pattern_id": "distributed-in-memory-cache",
+      "topics": ["distributed-cache", "key-value-store"],
+      "cohort_id": "distributed-cache-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["tcp", "http"]
+    },
+    {
+      "profile_id": "distributed-search",
+      "pattern_id": "distributed-search-engine",
+      "topics": ["search-engine", "full-text-search"],
+      "cohort_id": "search-engine-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "grpc"]
+    },
+    {
+      "profile_id": "vector-search",
+      "pattern_id": "vector-similarity-service",
+      "topics": ["vector-database", "vector-search"],
+      "cohort_id": "vector-search-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "grpc"]
+    },
+    {
+      "profile_id": "event-log",
+      "pattern_id": "replicated-event-log",
+      "topics": ["event-streaming", "kafka"],
+      "cohort_id": "event-log-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["tcp", "http"]
+    },
+    {
+      "profile_id": "message-broker",
+      "pattern_id": "low-latency-message-broker",
+      "topics": ["message-queue", "message-broker"],
+      "cohort_id": "message-broker-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["amqp", "mqtt", "http"]
+    },
+    {
+      "profile_id": "durable-workflow",
+      "pattern_id": "durable-execution-workflow",
+      "topics": ["workflow-engine", "durable-execution"],
+      "cohort_id": "durable-workflow-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "grpc"]
+    },
+    {
+      "profile_id": "dag-orchestration",
+      "pattern_id": "dag-workflow-scheduling",
+      "topics": ["workflow-orchestration", "data-pipeline"],
+      "cohort_id": "dag-orchestration-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http"]
+    },
+    {
+      "profile_id": "kubernetes-controller",
+      "pattern_id": "kubernetes-control-loop",
+      "topics": ["kubernetes-operator", "kubernetes-controller"],
+      "cohort_id": "kubernetes-controller-discovery",
+      "runtimes": ["kubernetes"],
+      "protocols": ["kubernetes-api"]
+    },
+    {
+      "profile_id": "gitops-delivery",
+      "pattern_id": "pull-based-gitops",
+      "topics": ["gitops", "continuous-delivery"],
+      "cohort_id": "gitops-delivery-discovery",
+      "runtimes": ["kubernetes", "server"],
+      "protocols": ["git", "kubernetes-api"]
+    },
+    {
+      "profile_id": "infrastructure-as-code",
+      "pattern_id": "declarative-infrastructure-as-code",
+      "topics": ["infrastructure-as-code", "terraform"],
+      "cohort_id": "infrastructure-as-code-discovery",
+      "runtimes": ["cli", "server"],
+      "protocols": ["http", "hcl"]
+    },
+    {
+      "profile_id": "api-gateway",
+      "pattern_id": "extensible-api-gateway",
+      "topics": ["api-gateway", "ingress-controller"],
+      "cohort_id": "api-gateway-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "grpc"]
+    },
+    {
+      "profile_id": "service-mesh",
+      "pattern_id": "sidecar-service-mesh",
+      "topics": ["service-mesh", "envoy"],
+      "cohort_id": "service-mesh-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "grpc"]
+    },
+    {
+      "profile_id": "ebpf-networking",
+      "pattern_id": "ebpf-cloud-networking",
+      "topics": ["ebpf", "cni"],
+      "cohort_id": "ebpf-networking-discovery",
+      "runtimes": ["linux", "kubernetes"],
+      "protocols": ["ebpf", "kubernetes-api"]
+    },
+    {
+      "profile_id": "metrics-monitoring",
+      "pattern_id": "pull-metrics-monitoring",
+      "topics": ["monitoring", "prometheus"],
+      "cohort_id": "metrics-monitoring-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["prometheus", "http"]
+    },
+    {
+      "profile_id": "telemetry-pipeline",
+      "pattern_id": "otel-telemetry-pipeline",
+      "topics": ["opentelemetry", "distributed-tracing"],
+      "cohort_id": "telemetry-pipeline-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["otlp", "http", "grpc"]
+    },
+    {
+      "profile_id": "central-logging",
+      "pattern_id": "central-log-pipeline",
+      "topics": ["log-aggregation", "log-management"],
+      "cohort_id": "central-logging-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "syslog"]
+    },
+    {
+      "profile_id": "oidc-identity",
+      "pattern_id": "oidc-identity-provider",
+      "topics": ["openid-connect", "oauth2"],
+      "cohort_id": "oidc-identity-discovery",
+      "runtimes": ["server", "browser"],
+      "protocols": ["oidc", "oauth2", "http"]
+    },
+    {
+      "profile_id": "policy-admission",
+      "pattern_id": "policy-as-code-admission",
+      "topics": ["policy-as-code", "kubernetes-admission"],
+      "cohort_id": "policy-admission-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["kubernetes-api", "http"]
+    },
+    {
+      "profile_id": "secrets-management",
+      "pattern_id": "dynamic-secrets-management",
+      "topics": ["secrets-management", "secret-management"],
+      "cohort_id": "secrets-management-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "kubernetes-api"]
+    },
+    {
+      "profile_id": "security-scanning",
+      "pattern_id": "cloud-native-security-scanning",
+      "topics": ["container-security", "vulnerability-scanner"],
+      "cohort_id": "security-scanning-discovery",
+      "runtimes": ["cli", "server", "kubernetes"],
+      "protocols": ["oci", "http"]
+    },
+    {
+      "profile_id": "serverless-runtime",
+      "pattern_id": "kubernetes-serverless-runtime",
+      "topics": ["serverless", "faas"],
+      "cohort_id": "serverless-runtime-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "cloudevents"]
+    },
+    {
+      "profile_id": "event-autoscaling",
+      "pattern_id": "event-driven-kubernetes-autoscaling",
+      "topics": ["autoscaling", "kubernetes-autoscaling"],
+      "cohort_id": "event-autoscaling-discovery",
+      "runtimes": ["kubernetes"],
+      "protocols": ["kubernetes-api", "http"]
+    },
+    {
+      "profile_id": "distributed-compute",
+      "pattern_id": "distributed-batch-stream-compute",
+      "topics": ["distributed-computing", "stream-processing"],
+      "cohort_id": "distributed-compute-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "rpc"]
+    },
+    {
+      "profile_id": "lakehouse-format",
+      "pattern_id": "lakehouse-table-format",
+      "topics": ["lakehouse", "data-lake"],
+      "cohort_id": "lakehouse-format-discovery",
+      "runtimes": ["server", "jvm"],
+      "protocols": ["object-storage", "parquet"]
+    },
+    {
+      "profile_id": "change-data-capture",
+      "pattern_id": "log-based-change-data-capture",
+      "topics": ["change-data-capture", "data-integration"],
+      "cohort_id": "change-data-capture-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["database-log", "http"]
+    },
+    {
+      "profile_id": "model-serving",
+      "pattern_id": "model-serving-platform",
+      "topics": ["model-serving", "inference-server"],
+      "cohort_id": "model-serving-discovery",
+      "runtimes": ["server", "kubernetes", "gpu"],
+      "protocols": ["http", "grpc"]
+    },
+    {
+      "profile_id": "ml-lifecycle",
+      "pattern_id": "ml-experiment-lifecycle",
+      "topics": ["mlops", "experiment-tracking"],
+      "cohort_id": "ml-lifecycle-discovery",
+      "runtimes": ["server", "python", "kubernetes"],
+      "protocols": ["http"]
+    },
+    {
+      "profile_id": "developer-platform",
+      "pattern_id": "internal-developer-platform",
+      "topics": ["platform-engineering", "developer-portal"],
+      "cohort_id": "developer-platform-discovery",
+      "runtimes": ["server", "kubernetes"],
+      "protocols": ["http", "kubernetes-api"]
+    }
+  ]
+}

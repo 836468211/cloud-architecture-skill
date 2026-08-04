@@ -5,3 +5,4 @@ __pycache__/
 .cache/
 work/
 *.tmp
+skills/choose-proven-cloud-stack/references/.github-metrics.jsonl.lock

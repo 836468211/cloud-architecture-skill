@@ -4,15 +4,18 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -180,13 +183,155 @@ def pending_metric(repo_id: str) -> dict[str, Any]:
     }
 
 
+def metric_timestamp(metric: dict[str, Any]) -> float:
+    value = metric.get("fetched_at")
+    if not isinstance(value, str) or not value:
+        return float("-inf")
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return float("-inf")
+
+
+def parse_shard(value: str | None) -> tuple[int, int] | None:
+    if not value:
+        return None
+    try:
+        raw_index, raw_total = value.split("/", 1)
+        index, total = int(raw_index), int(raw_total)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("--shard must use 1-based INDEX/TOTAL syntax") from exc
+    if total < 1 or index < 1 or index > total:
+        raise ValueError("--shard requires 1 <= INDEX <= TOTAL")
+    return index - 1, total
+
+
+def schedule_projects(
+    projects: list[dict[str, Any]],
+    metrics: dict[str, dict[str, Any]],
+    limit: int,
+    *,
+    only_pending: bool = False,
+    shard: tuple[int, int] | None = None,
+    resume_after: str | None = None,
+) -> list[dict[str, Any]]:
+    """Schedule pending and oldest snapshots first so repeated batches make progress."""
+    rows = list(projects)
+    if shard is not None:
+        shard_index, shard_total = shard
+        rows = [
+            row
+            for row in rows
+            if int.from_bytes(
+                hashlib.sha256(str(row.get("repo_id", "")).casefold().encode("utf-8")).digest()[:8],
+                "big",
+            )
+            % shard_total
+            == shard_index
+        ]
+    if resume_after:
+        marker = resume_after.casefold()
+        rows = [row for row in rows if str(row.get("repo_id", "")).casefold() > marker]
+    if only_pending:
+        rows = [
+            row
+            for row in rows
+            if metrics.get(str(row.get("repo_id", "")), {}).get("status") != "ok"
+            or metric_timestamp(metrics.get(str(row.get("repo_id", "")), {})) == float("-inf")
+        ]
+
+    def priority(row: dict[str, Any]) -> tuple[int, float, str]:
+        repo_id = str(row.get("repo_id", ""))
+        metric = metrics.get(repo_id, {})
+        pending = metric.get("status") != "ok" or metric_timestamp(metric) == float("-inf")
+        return (0 if pending else 1, metric_timestamp(metric), repo_id.casefold())
+
+    rows.sort(key=priority)
+    return rows[: max(0, limit)]
+
+
+def metrics_lock_path(path: Path) -> Path:
+    return path.with_name(f".{path.name}.lock")
+
+
+@contextmanager
+def exclusive_file_lock(path: Path, *, poll_interval: float = 0.05) -> Iterator[None]:
+    """Hold an advisory cross-process lock until the context exits."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = path.open("a+b")
+    acquired = False
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write(b"\0")
+                handle.flush()
+            while True:
+                try:
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                    acquired = True
+                    break
+                except OSError:
+                    time.sleep(max(0.001, poll_interval))
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            acquired = True
+
+        yield
+    finally:
+        if acquired:
+            handle.seek(0)
+            if os.name == "nt":
+                import msvcrt
+
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        handle.close()
+
+
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
-    temp_path = path.with_suffix(path.suffix + ".tmp")
-    with temp_path.open("w", encoding="utf-8", newline="\n") as handle:
-        for row in sorted(rows, key=lambda item: item["repo_id"].lower()):
-            handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
-            handle.write("\n")
-    temp_path.replace(path)
+    """Atomically replace a JSONL file using a process-unique sibling temp file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temp_path = Path(handle.name)
+            for row in sorted(rows, key=lambda item: item["repo_id"].lower()):
+                handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+                handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, path)
+        temp_path = None
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+
+def merge_metric_updates(path: Path, updates: dict[str, dict[str, Any]]) -> None:
+    """Merge this run's successful refreshes into the latest on-disk snapshot."""
+    if not updates:
+        return
+    with exclusive_file_lock(metrics_lock_path(path)):
+        latest = {row["repo_id"]: row for row in read_jsonl(path) if row.get("repo_id")}
+        latest.update(updates)
+        write_jsonl(path, list(latest.values()))
 
 
 def main() -> int:
@@ -196,6 +341,9 @@ def main() -> int:
     parser.add_argument("--max", type=int, default=60, help="maximum requests in this run")
     parser.add_argument("--timeout", type=int, default=20)
     parser.add_argument("--delay", type=float, default=0.0, help="optional delay between requests")
+    parser.add_argument("--only-pending", action="store_true", help="refresh only pending or invalid snapshots")
+    parser.add_argument("--shard", help="stable 1-based INDEX/TOTAL shard, for example 1/8")
+    parser.add_argument("--resume-after", help="only consider repo IDs lexically after this exact marker")
     args = parser.parse_args()
 
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -215,11 +363,23 @@ def main() -> int:
         repo_id = project["repo_id"]
         existing.setdefault(repo_id, pending_metric(repo_id))
 
-    limit = max(0, args.max)
-    selected = sorted(selected, key=lambda row: row["repo_id"].lower())[:limit]
+    try:
+        shard = parse_shard(args.shard)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    selected = schedule_projects(
+        selected,
+        existing,
+        max(0, args.max),
+        only_pending=args.only_pending,
+        shard=shard,
+        resume_after=args.resume_after,
+    )
     successes = 0
     failures = 0
     identity_failures = 0
+    updates: dict[str, dict[str, Any]] = {}
     remaining: str | None = None
     for index, project in enumerate(selected, 1):
         repo_id = project["repo_id"]
@@ -231,6 +391,7 @@ def main() -> int:
             remaining = headers.get("x-ratelimit-remaining", remaining)
             metric, identity_note = reconcile_metric(repo_id, existing[repo_id], payload, fetched_at)
             existing[repo_id] = metric
+            updates[repo_id] = metric
             successes += 1
             if identity_note:
                 print(f"[{index}/{len(selected)}] identity {repo_id}: {identity_note}", file=sys.stderr)
@@ -252,7 +413,7 @@ def main() -> int:
         if args.delay > 0 and index < len(selected):
             time.sleep(min(args.delay, 10.0))
 
-    write_jsonl(METRICS_PATH, list(existing.values()))
+    merge_metric_updates(METRICS_PATH, updates)
     print(
         json.dumps(
             {

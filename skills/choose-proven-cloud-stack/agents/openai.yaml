@@ -1,4 +1,4 @@
 interface:
   display_name: "Proven Cloud Stack"
-  short_description: "Select proven cloud architectures and repositories"
-  default_prompt: "Use $choose-proven-cloud-stack to compare proven open-source architectures and repositories for my cloud project."
+  short_description: "Compare cloud architectures across 1,000 repositories"
+  default_prompt: "Use $choose-proven-cloud-stack to compare evidence-tiered open-source architectures and repositories for my cloud project."

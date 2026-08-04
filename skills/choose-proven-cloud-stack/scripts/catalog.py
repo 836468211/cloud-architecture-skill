@@ -20,6 +20,8 @@ PROJECT_GLOB = "projects-*.jsonl"
 METRICS_FILE = REFERENCE_DIR / "github-metrics.jsonl"
 PATTERNS_FILE = REFERENCE_DIR / "patterns-core.jsonl"
 TERM_MAP_FILE = REFERENCE_DIR / "term-map.json"
+CATALOG_METADATA_FILE = REFERENCE_DIR / "catalog-metadata.json"
+REVIEWS_FILE = REFERENCE_DIR / "reviews.jsonl"
 ROLE_SLOTS = {
     "direct": {"direct-dependency", "official-sdk", "official-implementation"},
     "mechanism": {"mechanism-reference", "reference-implementation"},
@@ -30,6 +32,7 @@ ROLE_SLOTS = {
 }
 DEFAULT_RELEVANCE_THRESHOLD = 60.0
 DISCOVERY_RELEVANCE_THRESHOLD = 25.0
+MIN_PEER_GROUP_SIZE = 10
 REQUIREMENT_LIST_FIELDS = (
     "domains",
     "operations",
@@ -88,6 +91,24 @@ def load_term_map() -> tuple[dict[str, str], dict[str, list[str]]]:
             aliases[str(alias).strip().lower()] = term_id
         search_terms[term_id] = [str(item) for item in term.get("code_search_terms", [])]
     return aliases, search_terms
+
+
+def load_catalog_metadata() -> dict[str, Any]:
+    if not CATALOG_METADATA_FILE.exists():
+        return {}
+    value = json.loads(CATALOG_METADATA_FILE.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("catalog-metadata.json must contain an object")
+    return value
+
+
+def load_reviews() -> dict[str, list[dict[str, Any]]]:
+    reviews: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in read_jsonl(REVIEWS_FILE):
+        repo_id = str(row.get("repo_id", ""))
+        if repo_id:
+            reviews[repo_id].append(row)
+    return dict(reviews)
 
 
 def tokenize(text: str) -> set[str]:
@@ -206,6 +227,21 @@ def requirements_sets(requirements: dict[str, Any], aliases: dict[str, str]) -> 
     return {key: normalize_values(value, aliases) for key, value in mapping.items()}
 
 
+def unscored_requirement_fields(requirements: dict[str, Any]) -> list[str]:
+    """Expose context accepted for the final ADR but not encoded in repository scoring."""
+    fields: list[str] = []
+    if requirements.get("scale"):
+        fields.append("scale")
+    if requirements.get("weights"):
+        fields.append("weights")
+    constraints = requirements.get("constraints", {})
+    for key, value in constraints.items():
+        if key == "licenses_forbidden" or value in (None, False, [], {}, ""):
+            continue
+        fields.append(f"constraints.{key}")
+    return sorted(fields)
+
+
 def compatibility(project: dict[str, Any], metric: dict[str, Any], req: dict[str, set[str]], raw: dict[str, Any]) -> tuple[bool, list[str]]:
     dims = project_dimensions(project)
     reasons: list[str] = []
@@ -223,7 +259,13 @@ def compatibility(project: dict[str, Any], metric: dict[str, Any], req: dict[str
     return not reasons, reasons
 
 
-def role_compatibility(project: dict[str, Any], metric: dict[str, Any], req: dict[str, set[str]], slot: str) -> tuple[bool, list[str]]:
+def role_compatibility(
+    project: dict[str, Any],
+    metric: dict[str, Any],
+    req: dict[str, set[str]],
+    slot: str,
+    evaluated_roles: set[str] | None = None,
+) -> tuple[bool, list[str]]:
     """Apply hard constraints that are valid only for a repository evidence role."""
     if slot != "direct":
         return True, []
@@ -231,10 +273,13 @@ def role_compatibility(project: dict[str, Any], metric: dict[str, Any], req: dic
     reasons: list[str] = []
     if req["topologies"] and dims["topologies"] and not (req["topologies"] & dims["topologies"]):
         reasons.append("topology-conflict-for-direct-use")
-    if req["runtimes"] and dims["runtimes"] and not (req["runtimes"] & dims["runtimes"]):
-        reasons.append("runtime-conflict-for-direct-use")
-    if req["languages"] and dims["languages"] and not (req["languages"] & dims["languages"]):
-        reasons.append("language-conflict-for-direct-use")
+    strict_client_roles = {"direct-dependency", "official-sdk"}
+    apply_client_gate = evaluated_roles is None or bool(evaluated_roles & strict_client_roles)
+    if apply_client_gate:
+        if req["runtimes"] and dims["runtimes"] and not (req["runtimes"] & dims["runtimes"]):
+            reasons.append("runtime-conflict-for-direct-use")
+        if req["languages"] and dims["languages"] and not (req["languages"] & dims["languages"]):
+            reasons.append("language-conflict-for-direct-use")
     if metric.get("archived") is True:
         reasons.append("archived-direct-dependency")
     return not reasons, reasons
@@ -296,10 +341,85 @@ def pattern_role_pairs(project: dict[str, Any], roles: set[str]) -> set[tuple[st
     }
 
 
-def peer_stars(project: dict[str, Any], projects: list[dict[str, Any]], metrics: dict[str, dict[str, Any]], evaluated_roles: set[str]) -> tuple[list[float], str]:
+def build_peer_star_index(
+    projects: list[dict[str, Any]], metrics: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    """Pre-index peer membership so a large catalog is not rescanned per candidate."""
+    stars_by_repo: dict[str, float] = {}
+    pattern_role: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
+    cohort_role: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
+    cohort_all: defaultdict[str, set[str]] = defaultdict(set)
+    domain_role: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
+    domain_all: defaultdict[str, set[str]] = defaultdict(set)
+    for candidate in projects:
+        repo_id = str(candidate.get("repo_id", ""))
+        stars = metrics.get(repo_id, {}).get("stars")
+        if not isinstance(stars, int) or stars < 0:
+            continue
+        stars_by_repo[repo_id] = math.log10(stars + 1)
+        dims = project_dimensions(candidate)
+        for pair in pattern_role_pairs(candidate, dims["roles"]):
+            pattern_role[pair].add(repo_id)
+        cohort = str(candidate.get("cohort_id") or "")
+        domain = str(candidate.get("primary_domain") or "")
+        if cohort:
+            cohort_all[cohort].add(repo_id)
+        if domain:
+            domain_all[domain].add(repo_id)
+        for role in dims["roles"]:
+            if cohort:
+                cohort_role[(cohort, role)].add(repo_id)
+            if domain:
+                domain_role[(domain, role)].add(repo_id)
+    return {
+        "stars": stars_by_repo,
+        "pattern_role": pattern_role,
+        "cohort_role": cohort_role,
+        "cohort_all": cohort_all,
+        "domain_role": domain_role,
+        "domain_all": domain_all,
+    }
+
+
+def peer_stars(
+    project: dict[str, Any],
+    projects: list[dict[str, Any]],
+    metrics: dict[str, dict[str, Any]],
+    evaluated_roles: set[str],
+    peer_index: dict[str, Any] | None = None,
+) -> tuple[list[float], str]:
     dims = project_dimensions(project)
     roles = dims["roles"] & evaluated_roles if evaluated_roles else dims["roles"]
     pairs = pattern_role_pairs(project, roles)
+    if peer_index is not None:
+        repo_ids: set[str] = set()
+        for pair in pairs:
+            repo_ids.update(peer_index["pattern_role"].get(pair, set()))
+        peers = [peer_index["stars"][repo_id] for repo_id in repo_ids]
+        if len(peers) >= MIN_PEER_GROUP_SIZE:
+            return peers, "pattern+role"
+
+        cohort = str(project.get("cohort_id") or "")
+        domain = str(project.get("primary_domain") or "")
+        repo_ids = set()
+        if cohort:
+            if roles:
+                for role in roles:
+                    repo_ids.update(peer_index["cohort_role"].get((cohort, role), set()))
+            else:
+                repo_ids.update(peer_index["cohort_all"].get(cohort, set()))
+            label = "cohort"
+        else:
+            if roles:
+                for role in roles:
+                    repo_ids.update(peer_index["domain_role"].get((domain, role), set()))
+            else:
+                repo_ids.update(peer_index["domain_all"].get(domain, set()))
+            label = "primary-domain"
+        peers = [peer_index["stars"][repo_id] for repo_id in repo_ids]
+        suffix = "+role" if roles else ""
+        return peers, label + suffix
+
     peers: list[float] = []
     for candidate in projects:
         if pairs and not (pairs & pattern_role_pairs(candidate, roles)):
@@ -307,7 +427,7 @@ def peer_stars(project: dict[str, Any], projects: list[dict[str, Any]], metrics:
         stars = metrics.get(candidate.get("repo_id", ""), {}).get("stars")
         if isinstance(stars, int) and stars >= 0:
             peers.append(math.log10(stars + 1))
-    if len(peers) >= 3:
+    if len(peers) >= MIN_PEER_GROUP_SIZE:
         return peers, "pattern+role"
 
     cohort = project.get("cohort_id")
@@ -327,16 +447,29 @@ def peer_stars(project: dict[str, Any], projects: list[dict[str, Any]], metrics:
     return peers, ("cohort" if cohort else "primary-domain") + suffix
 
 
-def maturity_score(project: dict[str, Any], metric: dict[str, Any], projects: list[dict[str, Any]], metrics: dict[str, dict[str, Any]], patterns: dict[str, dict[str, Any]], evaluated_roles: set[str]) -> tuple[float, str, str, dict[str, float]]:
+def maturity_score(
+    project: dict[str, Any],
+    metric: dict[str, Any],
+    projects: list[dict[str, Any]],
+    metrics: dict[str, dict[str, Any]],
+    patterns: dict[str, dict[str, Any]],
+    evaluated_roles: set[str],
+    peer_index: dict[str, Any] | None = None,
+    reviews: list[dict[str, Any]] | None = None,
+) -> tuple[float, str, str, dict[str, float]]:
     components: dict[str, float] = {}
     weights: dict[str, float] = {}
     stars = metric.get("stars")
     peer_group = "unavailable"
     if isinstance(stars, int) and stars >= 0:
-        peers, peer_group = peer_stars(project, projects, metrics, evaluated_roles)
-        star_value = math.log10(stars + 1)
-        components["peer_stars"] = round(percentile(star_value, peers), 2)
-        weights["peer_stars"] = 35.0
+        peers, peer_group = peer_stars(project, projects, metrics, evaluated_roles, peer_index)
+        components["peer_group_size"] = float(len(peers))
+        if len(peers) >= MIN_PEER_GROUP_SIZE:
+            star_value = math.log10(stars + 1)
+            components["peer_stars"] = round(percentile(star_value, peers), 2)
+            weights["peer_stars"] = 35.0
+        else:
+            peer_group = f"{peer_group}:insufficient"
 
     pushed = parse_iso(metric.get("pushed_at"))
     if pushed:
@@ -353,7 +486,13 @@ def maturity_score(project: dict[str, Any], metric: dict[str, Any], projects: li
         weights["forks"] = 10.0
 
     tier = str(project.get("curation", {}).get("tier", "C")).upper()
-    tier_value = {"A": 100.0, "B": 75.0, "C": 40.0}.get(tier, 25.0)
+    valid_reviews = [
+        review
+        for review in (reviews or [])
+        if re.fullmatch(r"[0-9a-fA-F]{40}", str(review.get("commit_sha", "")))
+    ]
+    components["pinned_reviews"] = float(len(valid_reviews))
+    tier_value = {"A": 100.0 if valid_reviews else 75.0, "B": 75.0, "C": 40.0}.get(tier, 25.0)
     components["curation"] = tier_value
     weights["curation"] = 15.0
 
@@ -381,7 +520,7 @@ def maturity_score(project: dict[str, Any], metric: dict[str, Any], projects: li
     maturity = sum(components[key] * weights[key] for key in weights) / 100.0 if weights else 0.0
     fetched = parse_iso(metric.get("fetched_at"))
     stale = fetched is None or (datetime.now(timezone.utc) - fetched).days > 30
-    if tier == "A" and not stale:
+    if tier == "A" and valid_reviews and not stale:
         confidence = "high"
     elif tier in {"A", "B"} and metric.get("status") == "ok" and not stale:
         confidence = "medium"
@@ -393,6 +532,8 @@ def maturity_score(project: dict[str, Any], metric: dict[str, Any], projects: li
 def recommend(requirements: dict[str, Any], limit: int) -> dict[str, Any]:
     validate_requirements(requirements)
     projects, metrics, patterns = load_catalog()
+    reviews = load_reviews()
+    peer_index = build_peer_star_index(projects, metrics)
     aliases, _ = load_term_map()
     req = requirements_sets(requirements, aliases)
     text_terms = normalized_text_terms(str(requirements.get("objective", "")), aliases)
@@ -412,9 +553,12 @@ def recommend(requirements: dict[str, Any], limit: int) -> dict[str, Any]:
         for slot, slot_roles in ROLE_SLOTS.items():
             if not (dims["roles"] & slot_roles):
                 continue
-            if requested_roles and not (requested_roles & slot_roles):
+            matched_roles = dims["roles"] & (requested_roles or dims["roles"])
+            if requested_roles and not (matched_roles & slot_roles):
                 continue
-            slot_compatible, slot_reasons = role_compatibility(project, metric, req, slot)
+            slot_compatible, slot_reasons = role_compatibility(
+                project, metric, req, slot, matched_roles & slot_roles
+            )
             if not slot_compatible:
                 role_rejected.update(slot_reasons)
                 continue
@@ -423,12 +567,21 @@ def recommend(requirements: dict[str, Any], limit: int) -> dict[str, Any]:
             role_matches[slot] = slot_match
         if not role_scores:
             continue
+        if max(role_scores.values()) < DISCOVERY_RELEVANCE_THRESHOLD:
+            continue
 
         role_maturity: dict[str, dict[str, Any]] = {}
         for slot in role_scores:
             evaluated_roles = dims["roles"] & ROLE_SLOTS[slot]
             slot_maturity, slot_confidence, slot_peer_group, slot_components = maturity_score(
-                project, metric, projects, metrics, patterns, evaluated_roles
+                project,
+                metric,
+                projects,
+                metrics,
+                patterns,
+                evaluated_roles,
+                peer_index,
+                reviews.get(str(project.get("repo_id", "")), []),
             )
             role_maturity[slot] = {
                 "maturity": slot_maturity,
@@ -449,25 +602,41 @@ def recommend(requirements: dict[str, Any], limit: int) -> dict[str, Any]:
             recommended_slot = None
             relevance, matches = relevance_score(project, req, text_terms)
             maturity, confidence, peer_group, maturity_components = maturity_score(
-                project, metric, projects, metrics, patterns, req["roles"] or dims["roles"]
+                project,
+                metric,
+                projects,
+                metrics,
+                patterns,
+                req["roles"] or dims["roles"],
+                peer_index,
+                reviews.get(str(project.get("repo_id", "")), []),
             )
         if relevance < DISCOVERY_RELEVANCE_THRESHOLD:
             continue
         confidence_factor = {"high": 1.0, "medium": 0.9, "low": 0.75}[confidence]
         priority = math.sqrt(max(relevance, 0.0) * max(maturity, 0.0)) * confidence_factor
+        tier = str(project.get("curation", {}).get("tier", "C")).upper()
+        relevance_eligible = relevance >= DEFAULT_RELEVANCE_THRESHOLD
+        default_eligible = relevance_eligible and tier in {"A", "B"}
         results.append(
             {
                 "repo_id": project.get("repo_id"),
                 "url": project.get("url"),
                 "summary": project.get("summary"),
-                "tier": project.get("curation", {}).get("tier", "C"),
+                "tier": tier,
                 "roles": sorted(dims["roles"]),
                 "patterns": sorted(dims["patterns"]),
                 "relevance": relevance,
                 "maturity": maturity,
                 "confidence": confidence,
                 "review_priority": round(priority, 2),
-                "default_eligible": relevance >= DEFAULT_RELEVANCE_THRESHOLD,
+                "relevance_eligible": relevance_eligible,
+                "default_eligible": default_eligible,
+                "eligibility_reasons": (
+                    []
+                    if default_eligible
+                    else (["discovery-tier-requires-verification"] if tier == "C" else ["relevance-below-default-threshold"])
+                ),
                 "recommended_slot": recommended_slot,
                 "role_relevance": role_scores,
                 "role_maturity": role_maturity,
@@ -486,7 +655,19 @@ def recommend(requirements: dict[str, Any], limit: int) -> dict[str, Any]:
                 "limitations": project.get("limitations", []),
             }
         )
-    results.sort(key=lambda row: (-row["review_priority"], -row["relevance"], row["repo_id"] or ""))
+    has_primary_default = any(row["default_eligible"] for row in results)
+    for row in results:
+        row["coverage_gap"] = bool(
+            not has_primary_default and row["tier"] == "C" and row["relevance_eligible"]
+        )
+    results.sort(
+        key=lambda row: (
+            not row["default_eligible"],
+            -row["review_priority"],
+            -row["relevance"],
+            row["repo_id"] or "",
+        )
+    )
     role_shortlists: dict[str, list[dict[str, Any]]] = {}
     for slot in ROLE_SLOTS:
         slot_rows = [row for row in results if slot in row.get("role_relevance", {})]
@@ -497,8 +678,13 @@ def recommend(requirements: dict[str, Any], limit: int) -> dict[str, Any]:
                 max(row["role_relevance"][slot], 0.0) * max(evidence["maturity"], 0.0)
             ) * factor
 
+        def slot_default(row: dict[str, Any]) -> bool:
+            return row["tier"] in {"A", "B"} and row["role_relevance"][slot] >= DEFAULT_RELEVANCE_THRESHOLD
+
+        has_slot_default = any(slot_default(row) for row in slot_rows)
         slot_rows.sort(
             key=lambda row: (
+                not slot_default(row),
                 -slot_priority(row),
                 -row["role_relevance"][slot],
                 row["repo_id"] or "",
@@ -510,7 +696,13 @@ def recommend(requirements: dict[str, Any], limit: int) -> dict[str, Any]:
                     "repo_id": row["repo_id"],
                     "url": row["url"],
                     "role_relevance": row["role_relevance"][slot],
-                    "default_eligible": row["role_relevance"][slot] >= DEFAULT_RELEVANCE_THRESHOLD,
+                    "relevance_eligible": row["role_relevance"][slot] >= DEFAULT_RELEVANCE_THRESHOLD,
+                    "default_eligible": slot_default(row),
+                    "coverage_gap": bool(
+                        not has_slot_default
+                        and row["tier"] == "C"
+                        and row["role_relevance"][slot] >= DEFAULT_RELEVANCE_THRESHOLD
+                    ),
                     "maturity": row["role_maturity"][slot]["maturity"],
                     "confidence": row["role_maturity"][slot]["confidence"],
                     "peer_group": row["role_maturity"][slot]["peer_group"],
@@ -520,9 +712,13 @@ def recommend(requirements: dict[str, Any], limit: int) -> dict[str, Any]:
                 }
                 for row in slot_rows[:3]
             ]
+    metadata = load_catalog_metadata()
     return {
         "schema_version": "1.0",
+        "catalog_version": metadata.get("catalog_version", "unknown"),
+        "scoring_model_version": "1.0",
         "requirements": requirements,
+        "unscored_requirement_fields": unscored_requirement_fields(requirements),
         "catalog_projects": len(projects),
         "compatible_candidates": len(results),
         "hard_rejections": dict(sorted(rejected.items())),
@@ -532,6 +728,11 @@ def recommend(requirements: dict[str, Any], limit: int) -> dict[str, Any]:
             "discovery_min_relevance": DISCOVERY_RELEVANCE_THRESHOLD,
             "default_shortlist_ids": [
                 row["repo_id"] for row in results if row["default_eligible"]
+            ][:limit],
+            "discovery_shortlist_ids": [
+                row["repo_id"]
+                for row in results
+                if row["tier"] == "C" and row["relevance_eligible"]
             ][:limit],
         },
         "role_shortlists": role_shortlists,
@@ -573,6 +774,7 @@ def search(text: str, limit: int, min_stars: int, domains: list[str]) -> dict[st
 
 def stats() -> dict[str, Any]:
     projects, metrics, patterns = load_catalog()
+    metadata = load_catalog_metadata()
     tiers = Counter(str(row.get("curation", {}).get("tier", "C")).upper() for row in projects)
     domains = Counter(row.get("primary_domain", "unknown") for row in projects)
     now = datetime.now(timezone.utc)
@@ -588,6 +790,7 @@ def stats() -> dict[str, Any]:
             fresh += 1
     return {
         "schema_version": "1.0",
+        "catalog_version": metadata.get("catalog_version", "unknown"),
         "projects": len(projects),
         "patterns": len(patterns),
         "tiers": dict(sorted(tiers.items())),

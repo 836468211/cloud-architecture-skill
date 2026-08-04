@@ -1,6 +1,6 @@
 ---
 name: choose-proven-cloud-stack
-description: Select evidence-backed open-source cloud architectures and repositories by translating project requirements into solution patterns, querying a bundled catalog, ranking relevance and maturity including peer-normalized GitHub Stars, and statically reviewing shortlisted GitHub code. Use when Codex needs to recommend, compare, or validate cloud infrastructure technology choices; find mature open-source implementations; inspect repositories for architecture patterns; or produce a POC or ADR covering storage, file transfer, databases, messaging, Kubernetes, networking, observability, security, CI/CD, serverless, data, or AI infrastructure.
+description: Select evidence-backed open-source cloud architectures and repositories by translating project requirements into solution patterns, querying a bundled catalog of 1,000 repositories, ranking relevance and maturity including peer-normalized GitHub Stars, and statically reviewing shortlisted GitHub code. Use when Codex needs to recommend, compare, or validate cloud infrastructure technology choices; find mature open-source implementations; inspect repositories for architecture patterns; or produce a POC or ADR covering storage, file transfer, databases, messaging, Kubernetes, networking, observability, security, CI/CD, serverless, data, or AI infrastructure.
 ---
 
 # Choose Proven Cloud Stack
@@ -68,7 +68,10 @@ Read [scoring-model.md](references/scoring-model.md) before interpreting scores.
 - Keep relevance, maturity, confidence, and final review priority separate.
 - Prefer three to five candidates covering different evidence roles over five interchangeable projects.
 - Label stale or missing GitHub metrics explicitly.
-- Use `default_eligible: true` candidates for the primary shortlist. Treat 25-59 relevance candidates only as coverage-gap fallbacks or contrasts and explain the missing match.
+- Use `default_eligible: true` Tier A/B candidates for the primary shortlist.
+- Read `selection_policy.discovery_shortlist_ids` and `coverage_gap` only when primary evidence is missing. A Tier C repository must be verified live before adoption even when it has high Stars and relevance.
+- Treat 25-59 relevance candidates only as coverage-gap fallbacks or contrasts and explain the missing match.
+- Surface `unscored_requirement_fields` in the ADR and apply those scale, complexity, or preference constraints explicitly; do not imply that the catalog scored them.
 
 For a composed system, run one recommendation per fingerprint. Build the final shortlist across those results; do not treat one aggregate score as a valid ranking of the whole architecture.
 
@@ -123,10 +126,10 @@ Read [source-policy.md](references/source-policy.md) when deciding how strongly 
 
 - Tier A: code-reviewed and evidence-linked.
 - Tier B: curated and metadata-verified.
-- Tier C: discovery-only; verify before recommending.
+- Tier C: discovery-only with query provenance; verify before recommending.
 
-Default recommendations to Tier A and B. Use Tier C only to fill a genuine coverage gap or identify a newer alternative, and say that it has not received the same level of review.
+Default recommendations to Tier A and B. Use Tier C only to fill a genuine coverage gap or identify a newer alternative, and say that it has not received the same level of review. Never infer Tier A confidence from a label: require a record in `references/reviews.jsonl` pinned to code or tests.
 
 ## Maintenance
 
-Read [catalog-schema.md](references/catalog-schema.md) before changing records. Run `python scripts/validate_catalog.py` after catalog edits. Keep detailed project records and patterns in `references/`; keep this file focused on the workflow.
+Read [catalog-schema.md](references/catalog-schema.md) and [source-policy.md](references/source-policy.md) before changing records. Discovery queries are defined in [discovery-profiles.json](references/discovery-profiles.json); the frozen run is recorded in `references/discovery-manifest.json`. Run `python scripts/validate_catalog.py` after catalog edits. Keep detailed project records and patterns in `references/`; keep this file focused on the workflow.

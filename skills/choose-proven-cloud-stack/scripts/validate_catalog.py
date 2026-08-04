@@ -68,10 +68,14 @@ def main() -> int:
         if id_match and url_match and tuple(part.lower() for part in id_match.groups()) != tuple(part.lower() for part in url_match.groups()):
             error(errors, project, "repo_id and URL do not identify the same repository")
         tier = str(project.get("curation", {}).get("tier", ""))
+        if project.get("schema_version") != "1.0":
+            error(errors, project, "project schema_version must be '1.0'")
         if tier not in VALID_TIERS:
             error(errors, project, f"invalid curation tier: {tier!r}")
         if not project.get("primary_domain") or not project.get("domains"):
             error(errors, project, "primary_domain and domains are required")
+        elif project.get("primary_domain") not in project.get("domains", []):
+            error(errors, project, "primary_domain must also appear in domains")
         if not project.get("summary"):
             error(errors, project, "original summary is required")
         for field in PROJECT_LIST_FIELDS:
@@ -82,6 +86,10 @@ def main() -> int:
                 error(errors, project, f"{field} must not be empty")
             elif field != "pattern_links" and any(not isinstance(item, str) for item in value):
                 error(errors, project, f"{field} must contain only strings")
+            elif field != "pattern_links" and any(not item.strip() for item in value):
+                error(errors, project, f"{field} must not contain empty strings")
+            elif field != "pattern_links" and len(value) != len(set(value)):
+                error(errors, project, f"{field} must not contain duplicates")
         links = project.get("pattern_links")
         if not isinstance(links, list) or not links:
             error(errors, project, "at least one pattern link is required")
@@ -104,7 +112,7 @@ def main() -> int:
                 error(errors, project, f"invalid roles: {sorted(invalid_roles)}")
         metric = metrics.get(repo_id)
         if metric is None:
-            warnings.append(f"{repo_id}: missing GitHub metric record")
+            errors.append(f"{repo_id}: missing GitHub metric record")
         else:
             for field in ("stars", "forks"):
                 value = metric.get(field)
@@ -128,15 +136,32 @@ def main() -> int:
 
     metric_rows = catalog.read_jsonl(catalog.METRICS_FILE)
     metric_ids = Counter(str(row.get("repo_id", "")) for row in metric_rows)
+    metric_node_ids: Counter[str] = Counter()
     for metric in metric_rows:
         repo_id = str(metric.get("repo_id", ""))
         if not REPO_ID_RE.fullmatch(repo_id):
             error(errors, metric, f"invalid metric repo_id: {repo_id!r}")
         if metric.get("status") not in {"ok", "pending-refresh"}:
             error(errors, metric, f"invalid metric status: {metric.get('status')!r}")
+        if metric.get("status") == "ok":
+            node_id = metric.get("github_node_id")
+            canonical_slug = str(metric.get("canonical_slug") or "")
+            if not isinstance(node_id, str) or not node_id:
+                error(errors, metric, "status=ok requires github_node_id")
+            else:
+                metric_node_ids[node_id] += 1
+            expected_slug = repo_id.removeprefix("github:")
+            if canonical_slug.casefold() != expected_slug.casefold():
+                error(errors, metric, "canonical_slug must match metric repo_id")
+            for field in ("archived", "disabled", "is_fork"):
+                if field in metric and not isinstance(metric.get(field), bool):
+                    error(errors, metric, f"status=ok {field} must be a boolean")
     for repo_id, count in metric_ids.items():
         if count > 1:
             errors.append(f"duplicate metric repo_id {repo_id!r}: {count} records")
+    for node_id, count in metric_node_ids.items():
+        if count > 1:
+            errors.append(f"duplicate github_node_id {node_id!r}: {count} metric records")
 
     pattern_rows = catalog.read_jsonl(catalog.PATTERNS_FILE)
     pattern_ids = Counter(str(row.get("pattern_id", "")) for row in pattern_rows)
@@ -162,10 +187,65 @@ def main() -> int:
 
     metrics_without_projects = set(metrics) - known_repos
     for repo_id in sorted(metrics_without_projects):
-        warnings.append(f"{repo_id}: metric record has no project record")
+        errors.append(f"{repo_id}: metric record has no project record")
+
+    valid_review_repos: set[str] = set()
+    review_ids: Counter[str] = Counter()
+    for review in catalog.read_jsonl(catalog.REVIEWS_FILE):
+        review_id = str(review.get("review_id", ""))
+        review_ids[review_id] += 1
+        repo_id = str(review.get("repo_id", ""))
+        pattern_id = str(review.get("pattern_id", ""))
+        commit_sha = str(review.get("commit_sha", ""))
+        if not review_id:
+            error(errors, review, "review_id is required")
+        if repo_id not in known_repos:
+            error(errors, review, f"review references unknown repo_id: {repo_id!r}")
+        if pattern_id not in patterns:
+            error(errors, review, f"review references unknown pattern_id: {pattern_id!r}")
+        if not re.fullmatch(r"[0-9a-fA-F]{40}", commit_sha):
+            error(errors, review, "review commit_sha must contain exactly 40 hexadecimal characters")
+        evidence = review.get("evidence")
+        if not isinstance(evidence, list) or not evidence:
+            error(errors, review, "review evidence must be a non-empty array")
+        elif any(not isinstance(item, dict) or not item.get("claim") or not item.get("kind") or not item.get("path") for item in evidence):
+            error(errors, review, "each review evidence item requires claim, kind, and path")
+        else:
+            valid_review_repos.add(repo_id)
+    for review_id, count in review_ids.items():
+        if count > 1:
+            errors.append(f"duplicate review_id {review_id!r}: {count} records")
+    for project in projects:
+        if str(project.get("curation", {}).get("tier", "")).upper() == "A" and project.get("repo_id") not in valid_review_repos:
+            error(errors, project, "Tier A requires at least one pinned review record")
 
     if not aliases:
         errors.append("term-map.json contains no aliases")
+
+    try:
+        metadata = catalog.load_catalog_metadata()
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        errors.append(f"catalog metadata load failed: {exc}")
+        metadata = {}
+    if metadata:
+        project_counts = metadata.get("projects", {})
+        expected_tiers = Counter(str(row.get("curation", {}).get("tier", "C")).upper() for row in projects)
+        expected = {
+            "total": len(projects),
+            "tier_a": expected_tiers.get("A", 0),
+            "tier_b": expected_tiers.get("B", 0),
+            "tier_c": expected_tiers.get("C", 0),
+        }
+        if project_counts != expected:
+            errors.append(f"catalog metadata project counts differ: expected {expected}, got {project_counts}")
+        if metadata.get("patterns") != len(patterns):
+            errors.append(
+                f"catalog metadata pattern count differs: expected {len(patterns)}, got {metadata.get('patterns')!r}"
+            )
+        if not isinstance(metadata.get("catalog_version"), str) or not metadata.get("catalog_version"):
+            errors.append("catalog metadata requires catalog_version")
+        if not catalog.parse_iso(metadata.get("generated_at")):
+            errors.append("catalog metadata requires an ISO generated_at timestamp")
 
     result = {
         "valid": not errors,

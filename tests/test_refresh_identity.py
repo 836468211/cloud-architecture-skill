@@ -5,6 +5,7 @@ import io
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -58,6 +59,103 @@ def cached_metric(repo_id: str, node_id: str, canonical_slug: str) -> dict[str, 
 
 
 class RefreshIdentityTests(unittest.TestCase):
+    def test_merge_reloads_latest_snapshot_before_overlaying_this_run(self):
+        repo_a = "github:owner/a"
+        repo_b = "github:owner/b"
+        original_a = cached_metric(repo_a, "node-a", "owner/a")
+        newer_a = {**original_a, "stars": 999, "fetched_at": "2026-08-04T00:00:00Z"}
+        update_b = cached_metric(repo_b, "node-b", "owner/b")
+
+        with tempfile.TemporaryDirectory() as temp_name:
+            metrics_path = Path(temp_name) / "github-metrics.jsonl"
+            refresh.write_jsonl(metrics_path, [original_a])
+
+            # Another shard finishes after this run loaded its stale in-memory snapshot.
+            refresh.write_jsonl(metrics_path, [newer_a])
+            refresh.merge_metric_updates(metrics_path, {repo_b: update_b})
+
+            merged = {row["repo_id"]: row for row in refresh.read_jsonl(metrics_path)}
+            self.assertEqual(merged[repo_a], newer_a)
+            self.assertEqual(merged[repo_b], update_b)
+            self.assertFalse(metrics_path.with_suffix(".jsonl.tmp").exists())
+
+    def test_merge_waits_for_another_writer_and_preserves_both_updates(self):
+        repo_a = "github:owner/a"
+        repo_b = "github:owner/b"
+        update_a = cached_metric(repo_a, "node-a", "owner/a")
+        update_b = cached_metric(repo_b, "node-b", "owner/b")
+
+        with tempfile.TemporaryDirectory() as temp_name:
+            metrics_path = Path(temp_name) / "github-metrics.jsonl"
+            refresh.write_jsonl(metrics_path, [])
+            worker_started = threading.Event()
+            worker_finished = threading.Event()
+
+            def merge_from_worker() -> None:
+                worker_started.set()
+                refresh.merge_metric_updates(metrics_path, {repo_b: update_b})
+                worker_finished.set()
+
+            with refresh.exclusive_file_lock(refresh.metrics_lock_path(metrics_path)):
+                thread = threading.Thread(target=merge_from_worker, daemon=True)
+                thread.start()
+                self.assertTrue(worker_started.wait(1.0))
+                self.assertFalse(worker_finished.wait(0.15))
+                # Simulate the first writer committing while it owns the lock.
+                current = {row["repo_id"]: row for row in refresh.read_jsonl(metrics_path)}
+                current[repo_a] = update_a
+                refresh.write_jsonl(metrics_path, list(current.values()))
+
+            thread.join(2.0)
+            self.assertFalse(thread.is_alive())
+            self.assertTrue(worker_finished.is_set())
+            merged = {row["repo_id"]: row for row in refresh.read_jsonl(metrics_path)}
+            self.assertEqual(merged, {repo_a: update_a, repo_b: update_b})
+
+    def test_scheduler_prioritizes_pending_then_oldest_without_starvation(self):
+        projects = [{"repo_id": f"github:owner/repo-{index}"} for index in range(5)]
+        metrics = {
+            "github:owner/repo-0": refresh.pending_metric("github:owner/repo-0"),
+            "github:owner/repo-1": {"status": "ok", "fetched_at": "2025-01-01T00:00:00Z"},
+            "github:owner/repo-2": {"status": "ok", "fetched_at": "2025-02-01T00:00:00Z"},
+            "github:owner/repo-3": {"status": "ok", "fetched_at": "2025-03-01T00:00:00Z"},
+            "github:owner/repo-4": {"status": "ok", "fetched_at": "2025-04-01T00:00:00Z"},
+        }
+
+        first = refresh.schedule_projects(projects, metrics, 2)
+        self.assertEqual(
+            [row["repo_id"] for row in first],
+            ["github:owner/repo-0", "github:owner/repo-1"],
+        )
+        for row in first:
+            metrics[row["repo_id"]] = {"status": "ok", "fetched_at": "2026-08-03T00:00:00Z"}
+        second = refresh.schedule_projects(projects, metrics, 2)
+        self.assertEqual(
+            [row["repo_id"] for row in second],
+            ["github:owner/repo-2", "github:owner/repo-3"],
+        )
+
+    def test_only_pending_and_stable_shards_are_supported(self):
+        projects = [{"repo_id": f"github:owner/repo-{index}"} for index in range(20)]
+        metrics = {
+            row["repo_id"]: (
+                refresh.pending_metric(row["repo_id"])
+                if index % 3 == 0
+                else {"status": "ok", "fetched_at": "2026-08-03T00:00:00Z"}
+            )
+            for index, row in enumerate(projects)
+        }
+        pending = refresh.schedule_projects(projects, metrics, 100, only_pending=True)
+        self.assertTrue(pending)
+        self.assertTrue(all(metrics[row["repo_id"]]["status"] != "ok" for row in pending))
+
+        shards = [
+            {row["repo_id"] for row in refresh.schedule_projects(projects, metrics, 100, shard=(index, 4))}
+            for index in range(4)
+        ]
+        self.assertEqual(set().union(*shards), {row["repo_id"] for row in projects})
+        self.assertTrue(all(not (left & right) for i, left in enumerate(shards) for right in shards[i + 1 :]))
+
     def test_refreshes_matching_identity_without_treating_case_as_a_rename(self):
         cached = cached_metric("github:Owner/Repo", "node-stable", "owner/repo")
 
