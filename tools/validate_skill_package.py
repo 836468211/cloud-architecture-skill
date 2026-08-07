@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the installable Skill subtree and fixed v1 release contract."""
+"""Validate the installable Skill subtree and fixed release contract."""
 
 from __future__ import annotations
 
@@ -17,13 +17,17 @@ NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LOCAL_LINK_RE = re.compile(r"\]\((?!https?://|#)([^)]+)\)")
 
 EXPECTED_SCHEMA_VERSION = "1.0"
+EXPECTED_SKILL_VERSION = "1.0.1"
 EXPECTED_CATALOG_VERSION = "1.0.0"
 EXPECTED_SNAPSHOT_DATE = "2026-08-03"
 EXPECTED_GENERATED_AT = "2026-08-03T00:00:00Z"
 EXPECTED_INSTALL_URL = (
     "https://github.com/836468211/cloud-architecture-skill/"
-    "tree/v1.0.0/skills/choose-proven-cloud-stack"
+    f"tree/v{EXPECTED_SKILL_VERSION}/skills/choose-proven-cloud-stack"
 )
+EXPECTED_NPX_INSTALL_COMMAND = f"npx skills add {EXPECTED_INSTALL_URL}"
+EXPECTED_CLAUDE_PLUGIN_NAME = "proven-cloud-stack"
+EXPECTED_CLAUDE_MARKETPLACE_NAME = "cloud-architecture-skill"
 EXPECTED_PROJECT_COUNTS = {
     "total": 1000,
     "tier_a": 0,
@@ -123,7 +127,11 @@ def _validate_readme(root: Path, errors: list[str]) -> None:
         return
     markers = (
         EXPECTED_INSTALL_URL,
-        f"`v{EXPECTED_CATALOG_VERSION}` 固定快照（{EXPECTED_SNAPSHOT_DATE}）",
+        EXPECTED_NPX_INSTALL_COMMAND,
+        (
+            f"`v{EXPECTED_SKILL_VERSION}` 分发版本包含目录快照 "
+            f"`{EXPECTED_CATALOG_VERSION}`（{EXPECTED_SNAPSHOT_DATE}）"
+        ),
         f"| 项目总数 | {EXPECTED_PROJECT_COUNTS['total']} |",
         f"| A：代码深度验证 | {EXPECTED_PROJECT_COUNTS['tier_a']} |",
         f"| B：人工结构化且指标已核验 | {EXPECTED_PROJECT_COUNTS['tier_b']} |",
@@ -166,6 +174,16 @@ def _validate_skill_metadata(root: Path, skill_dir: Path, errors: list[str]) -> 
         errors.append("Skill name must match its lowercase hyphenated directory name")
     if not fields.get("description"):
         errors.append("Skill description must be non-empty")
+    if "Use when Codex needs" in fields.get("description", ""):
+        errors.append("SKILL.md description must be platform-neutral")
+
+    body = "\n".join(lines[closing + 1 :])
+    if "<skill-root>" not in body or "Never assume the current working directory" not in body:
+        errors.append("SKILL.md must explain how to resolve <skill-root>")
+    if re.search(r"\bpython3?\s+scripts/", body):
+        errors.append("SKILL.md bundled script commands must resolve from <skill-root>")
+    if '"<skill-root>/scripts/' not in body:
+        errors.append("SKILL.md must contain a quoted <skill-root>/scripts/ command")
 
     for target in LOCAL_LINK_RE.findall(text):
         clean = target.split("#", 1)[0]
@@ -192,6 +210,40 @@ def _validate_skill_metadata(root: Path, skill_dir: Path, errors: list[str]) -> 
         encoding="utf-8"
     ).rstrip():
         errors.append("install-subtree LICENSE.txt must match the repository license")
+
+
+def _validate_claude_plugin(root: Path, errors: list[str]) -> None:
+    plugin = _read_json(root / ".claude-plugin" / "plugin.json", errors, "Claude plugin")
+    marketplace = _read_json(
+        root / ".claude-plugin" / "marketplace.json", errors, "Claude marketplace"
+    )
+    if plugin is not None:
+        if plugin.get("name") != EXPECTED_CLAUDE_PLUGIN_NAME:
+            errors.append(
+                f"Claude plugin name must be {EXPECTED_CLAUDE_PLUGIN_NAME!r}"
+            )
+        if plugin.get("version") != EXPECTED_SKILL_VERSION:
+            errors.append(
+                f"Claude plugin version must be {EXPECTED_SKILL_VERSION!r}"
+            )
+    if marketplace is not None:
+        if marketplace.get("name") != EXPECTED_CLAUDE_MARKETPLACE_NAME:
+            errors.append(
+                "Claude marketplace name must be "
+                f"{EXPECTED_CLAUDE_MARKETPLACE_NAME!r}"
+            )
+        plugins = marketplace.get("plugins")
+        if not isinstance(plugins, list) or len(plugins) != 1:
+            errors.append("Claude marketplace must contain exactly one plugin")
+        else:
+            entry = plugins[0]
+            if not isinstance(entry, dict):
+                errors.append("Claude marketplace plugin entry must be an object")
+            else:
+                if entry.get("name") != EXPECTED_CLAUDE_PLUGIN_NAME:
+                    errors.append("Claude marketplace plugin name does not match plugin.json")
+                if entry.get("source") != "./":
+                    errors.append("Claude marketplace plugin source must be './'")
 
 
 def _validate_catalog_contract(skill_dir: Path, errors: list[str]) -> None:
@@ -371,7 +423,13 @@ def validate_package(root: Path = ROOT, skill_dir: Path | None = None) -> list[s
     """Return package-contract errors without printing or exiting."""
     skill_dir = skill_dir or root / "skills" / "choose-proven-cloud-stack"
     errors: list[str] = []
-    required_root_files = (root / "README.md", root / "LICENSE")
+    required_root_files = (
+        root / "README.md",
+        root / "README.en.md",
+        root / "LICENSE",
+        root / ".claude-plugin" / "plugin.json",
+        root / ".claude-plugin" / "marketplace.json",
+    )
     required_skill_files = tuple(skill_dir / relative for relative in REQUIRED_SKILL_FILES)
     for path in (*required_root_files, *required_skill_files):
         if not path.is_file():
@@ -385,6 +443,7 @@ def validate_package(root: Path = ROOT, skill_dir: Path | None = None) -> list[s
 
     _validate_readme(root, errors)
     _validate_skill_metadata(root, skill_dir, errors)
+    _validate_claude_plugin(root, errors)
     _validate_catalog_contract(skill_dir, errors)
     return errors
 

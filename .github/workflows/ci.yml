@@ -31,3 +31,43 @@ jobs:
         run: python tools/validate_skill_package.py
       - name: Run offline tests and v1 release gates
         run: python -m unittest discover -s tests -v
+
+  distribution:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify project-level install routes
+        env:
+          DISABLE_TELEMETRY: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_path="$GITHUB_WORKSPACE/skills/choose-proven-cloud-stack"
+          agents=(codex claude-code cursor cline roo windsurf gemini-cli github-copilot)
+          targets=(
+            .agents/skills/choose-proven-cloud-stack/SKILL.md
+            .claude/skills/choose-proven-cloud-stack/SKILL.md
+            .agents/skills/choose-proven-cloud-stack/SKILL.md
+            .agents/skills/choose-proven-cloud-stack/SKILL.md
+            .roo/skills/choose-proven-cloud-stack/SKILL.md
+            .windsurf/skills/choose-proven-cloud-stack/SKILL.md
+            .agents/skills/choose-proven-cloud-stack/SKILL.md
+            .agents/skills/choose-proven-cloud-stack/SKILL.md
+          )
+
+          for index in "${!agents[@]}"; do
+            install_root="$(mktemp -d)"
+            (
+              cd "$install_root"
+              npx --yes skills@1.5.22 add "$source_path" \
+                --skill choose-proven-cloud-stack \
+                --agent "${agents[$index]}" \
+                --copy \
+                --yes
+              cmp "$source_path/SKILL.md" "$install_root/${targets[$index]}"
+            )
+          done

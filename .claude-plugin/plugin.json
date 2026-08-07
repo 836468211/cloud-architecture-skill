@@ -1,0 +1,10 @@
+{
+  "name": "proven-cloud-stack",
+  "version": "1.0.1",
+  "description": "Selects evidence-backed open-source cloud architectures by matching requirements to solution patterns, ranking 1,000 repositories, and reviewing shortlisted code.",
+  "author": {
+    "name": "chenfufuhai",
+    "url": "https://github.com/836468211"
+  },
+  "homepage": "https://github.com/836468211/cloud-architecture-skill"
+}

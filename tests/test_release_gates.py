@@ -43,7 +43,7 @@ class CatalogReleaseGateTests(unittest.TestCase):
         self.assertEqual(
             len(projects),
             RELEASE_PROJECTS,
-            "v1.0.0 must not be released until the installable catalog contains exactly 1,000 repositories",
+            "the installable catalog must contain exactly 1,000 repositories",
         )
         self.assertEqual(metadata.get("schema_version"), "1.0")
         self.assertEqual(metadata.get("catalog_version"), "1.0.0")

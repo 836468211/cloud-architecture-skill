@@ -29,6 +29,16 @@ validator = load_module("validate_skill_package", SCRIPT_PATH)
 
 class ReleaseDocumentationTests(unittest.TestCase):
     def test_v1_target_is_consistently_fixed_at_1000(self):
+        self.assertEqual(validator.EXPECTED_SKILL_VERSION, "1.0.1")
+        self.assertEqual(validator.EXPECTED_CATALOG_VERSION, "1.0.0")
+        self.assertEqual(
+            validator.EXPECTED_NPX_INSTALL_COMMAND,
+            f"npx skills add {validator.EXPECTED_INSTALL_URL}",
+        )
+        self.assertEqual(validator.EXPECTED_CLAUDE_PLUGIN_NAME, "proven-cloud-stack")
+        self.assertEqual(
+            validator.EXPECTED_CLAUDE_MARKETPLACE_NAME, "cloud-architecture-skill"
+        )
         self.assertEqual(
             validator.EXPECTED_PROJECT_COUNTS,
             {
@@ -65,6 +75,12 @@ class ReleaseDocumentationTests(unittest.TestCase):
         self.assertIn("across 1,000 repositories", interface)
         self.assertIn("catalog of 1,000 repositories", skill)
         self.assertNotIn("catalog of roughly 2,000 repositories", skill)
+        self.assertNotIn("Use when Codex needs", skill)
+        self.assertNotIn("python scripts/", skill)
+        self.assertNotIn("python3 scripts/", skill)
+        self.assertIn("<skill-root>", skill)
+        self.assertIn('"<skill-root>/scripts/', skill)
+        self.assertIn(validator.EXPECTED_NPX_INSTALL_COMMAND, readme)
 
 
 class PackageContractTests(unittest.TestCase):
@@ -85,7 +101,10 @@ class PackageContractTests(unittest.TestCase):
             "name: choose-proven-cloud-stack\n"
             "description: Select evidence-backed cloud architectures and repositories.\n"
             "---\n\n"
-            "# Test Skill\n",
+            "# Test Skill\n\n"
+            "Resolve this SKILL.md directory as `<skill-root>`. "
+            "Never assume the current working directory is the Skill directory.\n\n"
+            'Run `python "<skill-root>/scripts/catalog.py" stats`.\n',
             encoding="utf-8",
         )
         (self.skill / "agents" / "openai.yaml").write_text(
@@ -97,11 +116,41 @@ class PackageContractTests(unittest.TestCase):
         )
         (self.root / "README.md").write_text(
             f"{validator.EXPECTED_INSTALL_URL}\n"
-            f"`v{validator.EXPECTED_CATALOG_VERSION}` 固定快照（{validator.EXPECTED_SNAPSHOT_DATE}）\n"
+            f"{validator.EXPECTED_NPX_INSTALL_COMMAND}\n"
+            f"`v{validator.EXPECTED_SKILL_VERSION}` 分发版本包含目录快照 "
+            f"`{validator.EXPECTED_CATALOG_VERSION}`（{validator.EXPECTED_SNAPSHOT_DATE}）\n"
             "| 项目总数 | 3 |\n"
             "| A：代码深度验证 | 0 |\n"
             "| B：人工结构化且指标已核验 | 1 |\n"
             "| C：发现目录 | 2 |\n",
+            encoding="utf-8",
+        )
+        (self.root / "README.en.md").write_text("# Test Skill\n", encoding="utf-8")
+        (self.root / ".claude-plugin").mkdir(parents=True)
+        (self.root / ".claude-plugin" / "plugin.json").write_text(
+            json.dumps(
+                {
+                    "name": validator.EXPECTED_CLAUDE_PLUGIN_NAME,
+                    "version": validator.EXPECTED_SKILL_VERSION,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (self.root / ".claude-plugin" / "marketplace.json").write_text(
+            json.dumps(
+                {
+                    "name": validator.EXPECTED_CLAUDE_MARKETPLACE_NAME,
+                    "owner": {"name": "test"},
+                    "plugins": [
+                        {
+                            "name": validator.EXPECTED_CLAUDE_PLUGIN_NAME,
+                            "source": "./",
+                        }
+                    ],
+                }
+            )
+            + "\n",
             encoding="utf-8",
         )
 
@@ -231,6 +280,23 @@ class PackageContractTests(unittest.TestCase):
         self.assertTrue(
             any("catalog_version" in error for error in self._validate()), self._validate()
         )
+
+    def test_rejects_cwd_relative_bundled_script_command(self):
+        path = self.skill / "SKILL.md"
+        path.write_text(
+            path.read_text(encoding="utf-8") + "\nRun `python scripts/catalog.py stats`.\n",
+            encoding="utf-8",
+        )
+        errors = self._validate()
+        self.assertTrue(any("resolve from <skill-root>" in error for error in errors), errors)
+
+    def test_rejects_mismatched_claude_plugin_version(self):
+        path = self.root / ".claude-plugin" / "plugin.json"
+        plugin = json.loads(path.read_text(encoding="utf-8"))
+        plugin["version"] = "1.0.0"
+        path.write_text(json.dumps(plugin) + "\n", encoding="utf-8")
+        errors = self._validate()
+        self.assertTrue(any("Claude plugin version" in error for error in errors), errors)
 
     def test_requires_manifest_and_review_files(self):
         (self.skill / "references" / "discovery-manifest.json").unlink()

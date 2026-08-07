@@ -4,6 +4,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -123,14 +124,16 @@ class CatalogTests(unittest.TestCase):
 
     def test_cli_accepts_requirements_from_stdin(self):
         requirements = (FIXTURE_DIR / "minio-browser-download.json").read_text(encoding="utf-8")
-        completed = subprocess.run(
-            [sys.executable, "-B", str(SCRIPT_DIR / "catalog.py"), "recommend", "--requirements", "-", "--limit", "3"],
-            input=requirements,
-            text=True,
-            encoding="utf-8",
-            capture_output=True,
-            check=False,
-        )
+        with tempfile.TemporaryDirectory() as unrelated_cwd:
+            completed = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT_DIR / "catalog.py"), "recommend", "--requirements", "-", "--limit", "3"],
+                input=requirements,
+                text=True,
+                encoding="utf-8",
+                capture_output=True,
+                check=False,
+                cwd=unrelated_cwd,
+            )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         output = json.loads(completed.stdout)
         self.assertEqual(len(output["results"]), 3)

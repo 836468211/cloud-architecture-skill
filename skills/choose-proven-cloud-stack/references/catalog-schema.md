@@ -1,6 +1,6 @@
 # Catalog schema
 
-Keep static curated claims separate from dynamic GitHub facts. Store one compact JSON object per line and use UTF-8. The release tag and `catalog_version` identify a fixed catalog snapshot; `schema_version` identifies the record format. They are independent versions.
+Keep static curated claims separate from dynamic GitHub facts. Store one compact JSON object per line and use UTF-8. The release tag identifies the distributed Skill package, `catalog_version` identifies its bundled data snapshot, and `schema_version` identifies the record format. These versions are independent.
 
 ## Contents
 
@@ -17,14 +17,17 @@ Keep static curated claims separate from dynamic GitHub facts. Store one compact
 
 ## Version contract
 
-The v1 release contract is:
+The current release contract is:
 
-- release and catalog version: `1.0.0`;
+- distribution release: `v1.0.1`;
+- catalog version: `1.0.0`;
 - record schema version: `1.0`;
 - fixed snapshot date: `2026-08-03`;
 - exactly 1,000 unique project records: 0 Tier A, 58 Tier B, and 942 Tier C;
 - 98 preserved static records and 902 generated discovery records;
 - 34 solution-pattern records.
+
+Distribution release `v1.0.1` reuses the unchanged `1.0.0` catalog snapshot. A packaging or compatibility release does not imply that repository facts were refreshed.
 
 Do not change record `schema_version` merely because a catalog release changes. Use SemVer for `catalog_version`; use a new record schema only for an incompatible data-shape change.
 
@@ -162,7 +165,7 @@ Pattern status and repository evidence tier are separate. A `proven` pattern sho
 
 ## Review records
 
-Pinned Tier A reviews live in `reviews.jsonl`. The file is required even when it is empty. v1.0.0 has no Tier A repositories, so an empty file is truthful.
+Pinned Tier A reviews live in `reviews.jsonl`. The file is required even when it is empty. Catalog snapshot `1.0.0` has no Tier A repositories, so an empty file is truthful.
 
 ```json
 {
@@ -267,7 +270,7 @@ Require `cache_complete: true`, equal planned and cached query counts, the fixed
 
 ## Catalog metadata
 
-`catalog-metadata.json` is the machine-readable release summary. For v1.0.0 it must report:
+`catalog-metadata.json` is the machine-readable catalog summary. For snapshot `1.0.0` it must report:
 
 ```json
 {

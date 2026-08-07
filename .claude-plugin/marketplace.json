@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "cloud-architecture-skill",
+  "description": "Claude Code plugin for evidence-backed cloud architecture selection.",
+  "owner": {
+    "name": "chenfufuhai",
+    "url": "https://github.com/836468211"
+  },
+  "plugins": [
+    {
+      "name": "proven-cloud-stack",
+      "description": "Selects proven cloud architecture patterns and relevant open-source implementations.",
+      "author": {
+        "name": "chenfufuhai",
+        "url": "https://github.com/836468211"
+      },
+      "source": "./",
+      "category": "development",
+      "homepage": "https://github.com/836468211/cloud-architecture-skill"
+    }
+  ]
+}

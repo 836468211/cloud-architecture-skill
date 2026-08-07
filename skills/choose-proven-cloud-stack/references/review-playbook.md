@@ -17,7 +17,7 @@ Generate precise search terms, symbols, protocol headers, configuration names, a
 
 ## Acquire safely
 
-Use `scripts/inspect_repository.py`. Restrict v1 inspection to explicit HTTPS GitHub repository URLs. It isolates Git configuration, permits only HTTPS, performs a `blob:none` temporary clone with no checkout, tags, submodules, or Git LFS downloads, then fetches only bounded commit-pinned text blobs. Do not bypass its file, byte, clone, or deadline limits with ad hoc Git commands.
+Resolve the directory containing `SKILL.md` as `<skill-root>`, then use `python "<skill-root>/scripts/inspect_repository.py"` (or `python3` when `python` is unavailable). Restrict v1 inspection to explicit HTTPS GitHub repository URLs. It isolates Git configuration, permits only HTTPS, performs a `blob:none` temporary clone with no checkout, tags, submodules, or Git LFS downloads, then fetches only bounded commit-pinned text blobs. Do not bypass its file, byte, clone, or deadline limits with ad hoc Git commands.
 
 Record:
 
