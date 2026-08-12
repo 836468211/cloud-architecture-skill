@@ -1,126 +1,124 @@
 # Proven Cloud Stack
 
-云服务技术选型 Skill。输入现有环境、目标和约束，它会先匹配解决方案模式，再从本地目录筛选候选仓库，最后静态审查少量最相关的 GitHub 项目。
+Cloud‑native technology selection skill. Given existing environment, goals and constraints, it first matches solution patterns, filters candidates from local catalogs, then performs static review against a small set of most‑relevant GitHub projects.
 
-这不是 GitHub Star 排行榜。许可证、部署拓扑、运行时和必需能力先做硬过滤；Star 只在同一方案、同一仓库角色内比较，用来判断采用度，不能代替技术匹配。
+License, deployment topology, runtime and mandatory capabilities are hard filters. Star count is only compared within the same solution and role to gauge adoption, and cannot override technical fit.
 
-[English](README.en.md)
+## Installation
 
-## 安装
-
-在项目目录中安装固定版本：
+Install a fixed release version in your project directory:
 
 ```bash
 npx skills add https://github.com/836468211/cloud-architecture-skill/tree/v1.0.1/skills/choose-proven-cloud-stack
 ```
 
-只安装到指定客户端：
+Install only for specified agents:
 
 ```bash
 npx skills add https://github.com/836468211/cloud-architecture-skill/tree/v1.0.1/skills/choose-proven-cloud-stack --agent codex --agent claude-code --agent cursor
 ```
 
-Node.js 只用于上面的通用安装命令。Skill 运行需要 Python 3.10+；离线目录查询只用标准库，联网核验仓库还需要 `git` 和网络。
+Node.js is only required for the installation commands above. Skill runtime requires Python 3.10+. Offline catalog lookup uses only Python standard library. Git and network access are needed for online repository validation.
 
-在 Codex 中也可以让 `skill-installer` 直接安装，不需要 Node.js：
+In Codex you may install directly via skill‑installer without Node.js:
 
-```text
-请使用 skill-installer 安装以下 Skill：
+```
+Please use skill-installer to install the following Skill:
 https://github.com/836468211/cloud-architecture-skill/tree/v1.0.1/skills/choose-proven-cloud-stack
 ```
 
-需要跟踪开发版时，把 URL 中的 `v1.0.1` 换成 `main`。固定版本更适合团队和可复现的 ADR。
+Point the URL to `main` if you want to track development builds. Pinning to a tag is recommended for teams and reproducible Architecture Decision Records (ADR).
 
-Claude Code 也可以按自托管 Plugin 安装：
+For self‑hosted installation on Claude Code:
 
 ```bash
 claude plugin marketplace add 836468211/cloud-architecture-skill --scope user
 claude plugin install proven-cloud-stack@cloud-architecture-skill --scope user
 ```
 
-这个入口由本仓库维护，不代表已经进入 Anthropic 官方插件目录。
+This entry is maintained in‑house and is not part of the official Anthropic plugin marketplace.
 
-## 使用示例
+## Usage Example
 
-下面是 Codex 的显式调用写法。其他客户端也可以直接描述需求；Claude Plugin 的显式命令是 `/proven-cloud-stack:choose-proven-cloud-stack`。
+Below is the explicit invocation for Codex. Other clients accept natural‑language requirement descriptions. The explicit command for the Claude Code plugin is `/proven-cloud-stack:choose-proven-cloud-stack`.
 
-```text
-使用 $choose-proven-cloud-stack。
+```
+Use $choose-proven-cloud-stack.
 
-环境：Java 21、Vue 3、MinIO、Kubernetes
-目标：浏览器大文件并发下载和断点恢复
-约束：流量不经过应用服务器，优先 Apache-2.0，尽量少引入组件
+Environment: Java 21, Vue 3, MinIO, Kubernetes
+Goal: Concurrent browser downloads with resume support for large files
+Constraints: No application‑server traffic proxying; prefer Apache‑2.0 license; minimize additional components
 ```
 
-输出包括架构与数据路径、候选仓库及其角色、淘汰原因、实现注意点，以及可执行的 POC 验收指标。Skill 不会运行候选仓库的代码。
+Output includes architecture and data‑flow diagrams, candidate repositories with their roles, elimination rationales, implementation notes, and executable POC acceptance criteria. The skill never executes code from candidate repositories.
 
-## 兼容情况
+## Compatibility Matrix
 
-| 客户端 | Skill 格式 | `skills` CLI 安装 | 端到端执行 |
+| Client | Skill Format | skills CLI Installation | End‑to‑End Execution |
 |---|---:|---:|---:|
-| Codex | 兼容 | 已验证 | 已验证 |
-| Claude Code、Cursor | 兼容 | 已验证 | 待验证 |
-| Cline、Roo Code、Windsurf | 兼容 | 已验证 | 待验证 |
-| Gemini CLI、GitHub Copilot | 兼容 | 已验证 | 待验证 |
+| Codex | Supported | Verified | Verified |
+| Claude Code, Cursor | Supported | Verified | To‑be‑validated |
+| Cline, Roo Code, Windsurf | Supported | Verified | To‑be‑validated |
+| Gemini CLI, GitHub Copilot | Supported | Verified | To‑be‑validated |
 
-“CLI 安装已验证”是指 `skills@1.5.22` 在 Windows 上使用本地包和项目级 copy 模式完成了八个平台的落盘路由；它不等于该客户端已经完成一次真实选型任务。没有端到端证据的平台不会写成完整兼容。
+“CLI Installation Verified” means `skills@1.5.22` completed local package copy logic on Windows across eight platforms. It does not guarantee a full real‑world selection workflow on that client. Platforms lacking end‑to‑end test results are not marked as fully functional.
 
-## 选型规则
+## Selection Principles
 
-1. 混合需求分开匹配。例如消息日志、任务队列和 CDC 分别选型，指标、日志和链路追踪也分别选型。
-2. 先做硬过滤，再评分。许可证、拓扑、运行时或必需机制冲突会直接淘汰。
-3. 相关度和成熟度分开计算。Star、活跃度和项目历史不能弥补技术不匹配。
-4. 默认结果只使用 A/B 层。C 层用于发现和补覆盖缺口，采用前必须核验最新代码。
-5. 最终审查固定到 Commit SHA，只读源码、测试和配置，不执行候选仓库。
+1. Split mixed requirements into separate evaluations. For example, separate reviews for message logging, task queues and CDC; separate reviews for metrics, logging and distributed tracing.
+2. Hard filtering first, scoring second. Candidates violating license, topology, runtime or mandatory‑capability requirements are rejected directly.
+3. Relevance and maturity are evaluated independently. Star count, activity and project history cannot compensate for poor technical fit.
+4. Results default to Tier A / Tier B patterns. Tier C is used to fill coverage gaps. Manual review of latest source code is mandatory before adopting Tier C items.
+5. Source review is locked to fixed commit SHA. It reads source code, tests and configuration files only; candidate code is never run.
 
-详细规则见 [`SKILL.md`](skills/choose-proven-cloud-stack/SKILL.md)、[`scoring-model.md`](skills/choose-proven-cloud-stack/references/scoring-model.md) 和 [`source-policy.md`](skills/choose-proven-cloud-stack/references/source-policy.md)。
+Full rules: [`SKILL.md`](skills/choose-proven-cloud-stack/SKILL.md), [`scoring-model.md`](skills/choose-proven-cloud-stack/references/scoring-model.md), [`source-policy.md`](skills/choose-proven-cloud-stack/references/source-policy.md).
 
-## 当前目录
+## Catalog Snapshot
 
-`v1.0.1` 分发版本包含目录快照 `1.0.0`（2026-08-03）：
+Release `v1.0.1` ships catalog snapshot `1.0.0` (snapshot date: 2026‑08‑03):
 
-| 内容 | 数量 |
+| Item | Count |
 |---|---:|
-| 解决方案模式 | 34 |
-| 项目总数 | 1000 |
-| A：代码深度验证 | 0 |
-| B：人工结构化且指标已核验 | 58 |
-| C：发现目录 | 942 |
-| 已有 GitHub 指标 | 983 |
-| 待刷新 GitHub 指标 | 17 |
+| Solution patterns | 34 |
+| Total catalog entries | 1000 |
+| Tier A: Full deep source review | 0 |
+| Tier B: Human‑curated, metric‑validated | 58 |
+| Tier C: Discovery‑only candidates | 942 |
+| GitHub metrics collected | 983 |
+| GitHub metrics pending refresh | 17 |
 
-这里的 1000 是目录规模，不是“1000 个仓库都审查过”。58 个 B 层项目经过结构化整理和身份核验；942 个 C 层项目用于扩大搜索范围，其中 902 个来自本次 GitHub Search 快照。A 层目前为 0，因为还没有项目完成“固定 Commit、代码与测试证据齐全”的深度审查。
+> 1000 denotes catalog entry count, not 1000 fully audited repositories. 58 Tier‑B items are manually structured and validated. 942 Tier‑C entries expand discovery scope; most originate from GitHub search results. Tier‑A is currently empty as no entry has completed fixed‑commit deep review.
 
-完整搜索得到 3356 个合格候选，最终按 34 个模式轮询选取，每个模式新增 26–27 个项目，并限制单一 owner 的占比。自动发现不会把项目晋升到 A/B 层。
+3356 raw candidates were collected. 26‑27 items are sampled per pattern, with single‑owner dilution limits. Automation cannot promote entries to Tier A or Tier B.
 
-精确计数见 [`catalog-metadata.json`](skills/choose-proven-cloud-stack/references/catalog-metadata.json)，查询、过滤和选取记录见 [`discovery-manifest.json`](skills/choose-proven-cloud-stack/references/discovery-manifest.json)。
+Exact counts are in [`catalog-metadata.json`](skills/choose-proven-cloud-stack/references/catalog-metadata.json). Search and selection records are stored in [`discovery-manifest.json`](skills/choose-proven-cloud-stack/references/discovery-manifest.json).
 
-## 主要文件
+## Key Files
 
-| 文件 | 用途 |
+| File | Purpose |
 |---|---|
-| `projects-curated.jsonl` / `projects-discovery.jsonl` | 原有人工整理项目 |
-| `projects-expanded.jsonl` | 目录快照 1.0.0 的自动发现项目 |
-| `github-metrics.jsonl` | Star、活跃度、许可证等 GitHub 快照 |
-| `patterns-core.jsonl` | 34 个解决方案模式 |
-| `discovery-profiles.json` | GitHub 发现查询配置 |
-| `discovery-manifest.json` | 本次查询和选取清单 |
-| `reviews.jsonl` | 固定 Commit 的深度审查记录；当前为空 |
+| `projects-curated.jsonl` / `projects-discovery.jsonl` | Manually curated project entries |
+| `projects-expanded.jsonl` | Auto‑discovered entries for snapshot 1.0.0 |
+| `github-metrics.jsonl` | Snapshot of stars, activity, licenses and GitHub metadata |
+| `patterns-core.jsonl` | 34 core solution patterns |
+| `discovery-profiles.json` | GitHub search query profiles |
+| `discovery-manifest.json` | Raw search & sampling manifest |
+| `reviews.jsonl` | Deep review records against fixed commit SHA; currently empty |
 
-这些文件都在 `skills/choose-proven-cloud-stack/references/` 下。
+All files reside under `skills/choose-proven-cloud-stack/references/`.
 
-## 已知限制
+## Known Limitations
 
-- C 层来自主题搜索，可能混入功能相近但不适合直接集成的项目。默认推荐会排除这些未核验项目，但人工复核仍不可省略。
-- 当前没有 Tier A 项目，目录结果不能当作完整代码审计结论。
-- 部分规模、成本和团队偏好只会标为 `unscored_requirement_fields`，需要在 ADR 和 POC 中单独判断。
-- 没有网络时只报告缓存日期，不猜测最新 Star 或维护状态。
+- Tier‑C items come from keyword search and may include functionally similar but non‑integratable projects. They are filtered out of default recommendations, yet manual review remains required.
+- There are no Tier‑A entries; catalog output does not substitute for full code audit.
+- Some scale, cost and team‑preference fields are marked `unscored_requirement_fields` and must be judged separately in ADR and POC work.
+- Offline mode returns cached timestamps and does not guess real‑time star counts or maintenance status.
 
-## 安全边界
+## Security Boundaries
 
-仓库检查器只接受 HTTPS GitHub 地址，使用隔离的 Git 配置和 `blob:none` 临时克隆。它不 Checkout，不读取 `.env`，不拉取子模块或 Git LFS，也不运行项目的代码、测试、构建、包管理器、容器和 Hook。README、`AGENTS.md`、注释等内容始终按不可信文本处理。
+Repository inspector accepts HTTPS GitHub URLs only. It uses isolated git config with `blob:none` partial clone. It does not checkout full tree, read `.env`, pull submodules or Git‑LFS assets. No candidate source code, tests, build scripts, package managers, containers or git hooks are executed. README, `AGENTS.md` and inline comments are treated as untrusted free‑form text.
 
-## 本地验证
+## Local Validation
 
 ```bash
 python skills/choose-proven-cloud-stack/scripts/validate_catalog.py
@@ -129,26 +127,26 @@ python tools/validate_skill_package.py
 python -m unittest discover -s tests -v
 ```
 
-维护者刷新 GitHub 指标：
+Maintainer workflow for refreshing GitHub metrics:
 
 ```bash
 python tools/refresh_github_metrics.py --tier B --max 60
 ```
 
-重新生成发现目录：
+Rebuild discovery catalog:
 
 ```bash
-# 重复执行，直到输出 remaining: 0
+# Repeat until remaining: 0
 python tools/build_discovery_catalog.py --fetch --max-queries 10
 python tools/build_discovery_catalog.py --build --target-total 1000 --snapshot-date YYYY-MM-DD
 ```
 
-GitHub 公开 API 有频率限制，可以通过 `GITHUB_TOKEN` 或 `GH_TOKEN` 提高配额。脚本不会打印 Token。
+Respect GitHub public‑API rate limits. Use environment variable `GITHUB_TOKEN` or `GH_TOKEN` to raise quota. Tokens are never printed to logs.
 
-## 贡献
+## Contributing
 
-新增项目需要说明对应的解决方案模式和证据角色，不能只提交热门链接。自动化只负责发现和更新公开事实；能力标签、模式关系和 A/B 层晋级需要人工审查。改动后请运行上面的目录校验、包校验和测试。
+New project submissions must reference corresponding solution patterns and adoption evidence. Mere popular links are insufficient. Automation collects public facts only. Capability tagging, pattern mapping and Tier‑A / Tier‑B promotion require human review. Run catalog validation, package checks and unit tests after changes.
 
 ## License
 
-Apache-2.0。目录只保存本项目的分类、公开仓库事实和上游链接，不复制候选项目源码；每个候选项目仍受自身许可证约束。
+Apache‑2.0. The catalog stores classification metadata, public facts and upstream links only. No upstream source code is copied. Each referenced repository remains governed by its own license.
